@@ -204,6 +204,8 @@ def test_report_includes_table_3_and_deployed_model(
                 *args,
                 "--docs-dir",
                 str(tmp_path / "docs"),
+                "--readme",
+                str(tmp_path / "no-readme.md"),
                 "--frontend-summary",
                 str(tmp_path / "summary.json"),
             ]
@@ -222,3 +224,24 @@ def test_report_includes_table_3_and_deployed_model(
     assert set(summary["reproducible"]["dropped"]) >= {"NHR", "PPE"}
     assert summary["dataset"]["n_recordings"] == 60  # the 10-subject fixture
     assert "SVM" in summary["protocols"]
+
+
+def test_update_readme_replaces_only_the_marked_block(tmp_path: Path) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        f"# Title\n\nbefore\n{report.README_START}\nold\n{report.README_END}\nafter\n"
+    )
+    assert report.update_readme(readme, "| new | table |")
+    text = readme.read_text()
+    assert "old" not in text and "| new | table |" in text
+    assert text.startswith("# Title\n\nbefore\n") and text.endswith("after\n")
+    # Idempotent: running again gives the same file.
+    assert report.update_readme(readme, "| new | table |")
+    assert readme.read_text() == text
+
+
+def test_update_readme_without_markers_changes_nothing(tmp_path: Path) -> None:
+    readme = tmp_path / "README.md"
+    readme.write_text("# No markers here\n")
+    assert report.update_readme(readme, "x") is False
+    assert readme.read_text() == "# No markers here\n"
