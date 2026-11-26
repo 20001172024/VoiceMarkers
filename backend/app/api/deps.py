@@ -26,4 +26,5 @@ def get_explainer(request: Request) -> Explainer:
 
 def rate_limit(request: Request) -> None:
     """Count this request against the client's per-minute allowance."""
-    request.app.state.limiter.hit(client_id(request))
+    hops = request.app.state.settings.forwarded_hops
+    request.app.state.limiter.hit(client_id(request, hops))

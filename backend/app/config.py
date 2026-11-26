@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     model_path: Path | None = None
     # Prediction requests allowed per client IP per minute (0 disables the limit).
     rate_limit_per_minute: int = 10
+    # Number of trusted reverse proxies in front of the app. With N > 0 the client
+    # IP is the N-th entry from the right of X-Forwarded-For (the entry the
+    # nearest trusted proxy added); entries further left are client-controlled.
+    # 0 = ignore the header and use the connection's peer address.
+    forwarded_hops: int = 0
+    # Identifies the deployed build (set to the git commit by the deploy job).
+    build_sha: str = "dev"
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -8,18 +8,15 @@ services:
     env_file:
       - path: .env
         required: false
+    # Same image as production; for development, reload on code changes.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      PORT: "8000"
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
-      - ./backend/tests:/app/tests
       - ./backend/models:/app/models
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   frontend:
     build: ./frontend

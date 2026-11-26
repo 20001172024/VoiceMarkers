@@ -7,7 +7,14 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a run on main midway: it may be deploying.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Deploy targets. Override with repository variables (Settings > Secrets and
+# variables > Actions > Variables) if the Space or URLs change.
+env:
+  HF_SPACE: ${{ vars.HF_SPACE || 'arora2006/voicemarkers-api' }}
+  API_BASE_URL: ${{ vars.API_BASE_URL || 'https://arora2006-voicemarkers-api.hf.space' }}
 
 jobs:
   python:
@@ -56,3 +63,125 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  docker:
+    name: Docker image (build + smoke test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the production image
+        run: docker build -t voicemarkers-api backend
+      - name: Start it
+        run: docker run -d --name api -p 7860:7860 -e BUILD_SHA=ci voicemarkers-api
+      - name: Wait for /health (model loaded)
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS localhost:7860/health | grep -q '"model_loaded":true'; then exit 0; fi
+            sleep 2
+          done
+          echo "API did not become healthy"; exit 1
+      - name: Predict from the sample WAV
+        run: |
+          curl -fsS -X POST --data-binary @data/samples/synthetic_steady.wav \
+            -H "Content-Type: audio/wav" localhost:7860/predict/audio > out.json
+          python3 -c "import json; d = json.load(open('out.json')); assert d['prediction']['label'] in {'healthy_like', 'parkinsons_like'}; assert d['disclaimer']; print(d['prediction'])"
+      - name: Predict from browser-style WebM (ffmpeg inside the image)
+        run: |
+          docker exec api ffmpeg -loglevel error -f lavfi -i "sine=frequency=150:duration=3" \
+            -c:a libopus -f webm - > tone.webm
+          code=$(curl -s -o webm.json -w "%{http_code}" -X POST --data-binary @tone.webm \
+            -H "Content-Type: audio/webm" localhost:7860/predict/audio)
+          cat webm.json; echo
+          # A pure tone decodes fine but is not a voice: 200 or a 422 voice-check error,
+          # never 415 (format unsupported) or 400 (undecodable).
+          [ "$code" = "200" ] || [ "$code" = "422" ]
+      - name: Runs as a non-root user
+        run: '[ "$(docker exec api id -u)" = "1000" ]'
+      - name: Container logs
+        if: always()
+        run: docker logs api
+
+  deploy-backend:
+    name: Deploy backend (Hugging Face Space)
+    needs: [python, frontend, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check for the HF_TOKEN secret
+        id: check
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -n "$HF_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::HF_TOKEN secret not set; skipping backend deploy (see docs/deployment.md)"; fi
+      - uses: actions/setup-python@v7
+        if: steps.check.outputs.enabled == 'true'
+        with:
+          python-version: "3.11"
+      - name: Upload to the Space
+        if: steps.check.outputs.enabled == 'true'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: |
+          pip install "huggingface_hub==2.4.0"
+          python -m deploy.deploy_space --repo-id "$HF_SPACE" --build-sha "$GITHUB_SHA" \
+            --cors-origins "$FRONTEND_URL"
+      - name: Wait until the new build is live
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          # The Space rebuilds the image after each upload (several minutes).
+          for i in $(seq 1 90); do
+            if curl -fsS "$API_BASE_URL/health" | grep -q "\"build\":\"$GITHUB_SHA\""; then
+              curl -fsS "$API_BASE_URL/health"; exit 0
+            fi
+            sleep 20
+          done
+          echo "The Space did not serve build $GITHUB_SHA within 30 minutes"; exit 1
+
+  deploy-frontend:
+    name: Deploy frontend (Vercel)
+    needs: [deploy-backend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-frontend
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check for the Vercel secrets
+        id: check
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::Vercel secrets not set; skipping frontend deploy (see docs/deployment.md)"; fi
+      - uses: actions/setup-node@v7
+        if: steps.check.outputs.enabled == 'true'
+        with:
+          node-version: "22"
+      - name: Build and deploy
+        if: steps.check.outputs.enabled == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VITE_API_BASE_URL: ${{ env.API_BASE_URL }}
+        run: |
+          npm install --global vercel@67.0.0
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "Deployed to $url"
+          echo "### Frontend deployed: $url" >> "$GITHUB_STEP_SUMMARY"
