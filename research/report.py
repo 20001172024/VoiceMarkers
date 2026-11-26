@@ -32,6 +32,7 @@ from research.models import BASELINE  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = REPO_ROOT / "research" / "results"
 DOCS_DIR = REPO_ROOT / "docs"
+FRONTEND_SUMMARY = REPO_ROOT / "frontend" / "src" / "generated" / "evaluation_summary.json"
 
 PROTOCOL_LABELS = {
     "row_default": "Row-level, default settings (paper setup)",
@@ -499,6 +500,79 @@ recording conditions only; they say nothing about recordings made on other micro
 """
 
 
+def summary_for_frontend(
+    paper: dict[str, Any],
+    ev: dict[str, Any],
+    ev_repro: dict[str, Any] | None,
+    meta: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """The numbers the frontend's About page shows, copied from the result files.
+
+    Generated alongside docs/evaluation.md so the page never shows a hand-typed number.
+    """
+
+    def ms(summary: dict[str, float]) -> dict[str, float]:
+        return {"mean": float(summary["mean"]), "std": float(summary["std"])}
+
+    models = [m for m in ev["cv"] if m != BASELINE]
+    d = ev["dataset"]
+    out: dict[str, Any] = {
+        "generated_by": "research/report.py",
+        "dataset": {
+            k: d[k]
+            for k in (
+                "n_recordings",
+                "n_parkinsons",
+                "n_healthy",
+                "n_subject_ids",
+                "n_parkinsons_subjects",
+                "n_healthy_subjects",
+            )
+        },
+        "paper": {
+            "reported_svm_accuracy": paper["config"]["paper_svm_accuracy"],
+            "svm_accuracy_200_splits": ms(paper["repeated_splits"]["SVM"]["accuracy"]),
+        },
+        "baseline_accuracy": ms(ev["cv"][BASELINE]["subject_tuned"]["summary"]["accuracy"]),
+        "n_outer_folds": ev["config"]["n_splits"] * ev["config"]["n_repeats"],
+        "protocols": {
+            m: {
+                p: ms(ev["cv"][m][p]["summary"]["balanced_accuracy"])
+                for p in ("row_default", "subject_default", "subject_tuned")
+            }
+            for m in models
+        },
+        "reproducible": None,
+        "deployed": None,
+    }
+    if ev_repro:
+        out["reproducible"] = {
+            "n_features": len(ev_repro["config"]["features"]),
+            "dropped": [f for f in FEATURE_COLUMNS if f not in ev_repro["config"]["features"]],
+            "balanced_accuracy": {
+                m: {
+                    "all": ms(ev["cv"][m]["subject_tuned"]["summary"]["balanced_accuracy"]),
+                    "reproducible": ms(
+                        ev_repro["cv"][m]["subject_tuned"]["summary"]["balanced_accuracy"]
+                    ),
+                }
+                for m in models
+                if m in ev_repro["cv"]
+            },
+        }
+    if meta:
+        out["deployed"] = {
+            "model_type": meta["model_type"],
+            "model_version": meta["model_version"],
+            "metrics": {
+                k: ms(v)
+                for k, v in meta["evaluation"]["reproducible_features"].items()
+                if k in ("balanced_accuracy", "recall", "specificity", "roc_auc")
+            },
+        }
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Generate docs/evaluation.md.")
@@ -515,6 +589,7 @@ def main(argv: list[str] | None = None) -> int:
         default=REPO_ROOT / "backend" / "models" / "model_metadata.json",
     )
     parser.add_argument("--docs-dir", type=Path, default=DOCS_DIR)
+    parser.add_argument("--frontend-summary", type=Path, default=FRONTEND_SUMMARY)
     args = parser.parse_args(argv)
 
     paper = json.loads(args.paper.read_text())
@@ -532,6 +607,10 @@ def main(argv: list[str] | None = None) -> int:
     report_md = build_report(paper, ev, ev_repro=ev_repro, meta=meta)
     (args.docs_dir / "evaluation.md").write_text(report_md)
     print(f"Wrote {args.docs_dir / 'evaluation.md'}")
+    args.frontend_summary.parent.mkdir(parents=True, exist_ok=True)
+    summary = summary_for_frontend(paper, ev, ev_repro, meta)
+    args.frontend_summary.write_text(json.dumps(summary, indent=2) + "\n")
+    print(f"Wrote {args.frontend_summary}")
     return 0
 
 

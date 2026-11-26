@@ -198,10 +198,27 @@ def test_report_includes_table_3_and_deployed_model(
         "--model-metadata",
         str(paths["meta"]),
     ]
-    assert report.main([*args, "--docs-dir", str(tmp_path / "docs")]) == 0
+    assert (
+        report.main(
+            [
+                *args,
+                "--docs-dir",
+                str(tmp_path / "docs"),
+                "--frontend-summary",
+                str(tmp_path / "summary.json"),
+            ]
+        )
+        == 0
+    )
 
     md = (tmp_path / "docs" / "evaluation.md").read_text()
     section5 = md.split("## 5.")[1].split("## 6.")[0]
     assert "Not generated yet" not in section5
     assert "### Deployed model" in section5
     assert "`NHR`" in section5 and "`PPE`" in section5  # dropped features listed
+
+    summary = json.loads((tmp_path / "summary.json").read_text())
+    assert summary["deployed"]["model_type"] == "Logistic Regression"
+    assert set(summary["reproducible"]["dropped"]) >= {"NHR", "PPE"}
+    assert summary["dataset"]["n_recordings"] == 60  # the 10-subject fixture
+    assert "SVM" in summary["protocols"]
