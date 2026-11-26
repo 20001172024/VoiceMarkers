@@ -1,0 +1,24 @@
+# Repo-wide lint, format and test settings.
+# Backend package metadata and dependencies live in backend/pyproject.toml.
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: import sorting, B: bugbear, UP: pyupgrade
+select = ["E", "F", "I", "B", "UP"]
+# E501 (line length) is left to black.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "data"]
+
+[tool.pytest.ini_options]
+# Run from the repo root: backend tests plus tests for repo-level scripts.
+testpaths = ["backend/tests", "tests"]
+pythonpath = ["."]
