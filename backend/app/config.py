@@ -19,9 +19,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     # Comma-separated list of allowed frontend origins.
     cors_origins: str = "http://localhost:5173"
-    # Used from M4 (audio upload validation, model loading).
     max_upload_mb: float = 5.0
+    # Directory holding model.joblib + model_metadata.json. None = backend/models/.
     model_path: Path | None = None
+    # Prediction requests allowed per client IP per minute (0 disables the limit).
+    rate_limit_per_minute: int = 10
 
     @property
     def cors_origin_list(self) -> list[str]:

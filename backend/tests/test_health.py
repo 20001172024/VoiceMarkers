@@ -13,7 +13,11 @@ client = TestClient(app)
 def test_health_returns_ok_with_disclaimer() -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "version": __version__, "disclaimer": DISCLAIMER}
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["version"] == __version__
+    assert body["disclaimer"] == DISCLAIMER
+    assert isinstance(body["model_loaded"], bool)
 
 
 def test_openapi_description_includes_disclaimer() -> None:

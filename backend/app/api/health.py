@@ -1,6 +1,6 @@
 """Health check router."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app import __version__
@@ -14,10 +14,14 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+    model_loaded: bool
     disclaimer: str
 
 
 @router.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
-    """Report that the API process is up."""
-    return HealthResponse(status="ok", version=__version__, disclaimer=DISCLAIMER)
+def health(request: Request) -> HealthResponse:
+    """Report that the API process is up, and whether the model loaded."""
+    loaded = getattr(request.app.state, "model", None) is not None
+    return HealthResponse(
+        status="ok", version=__version__, model_loaded=loaded, disclaimer=DISCLAIMER
+    )
