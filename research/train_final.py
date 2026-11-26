@@ -52,6 +52,7 @@ PREFERRED_MODEL = "Logistic Regression"
 MODEL_VERSION = "1.0.0"
 FINAL_CV_SPLITS = 5
 PERCENTILES = (5, 25, 50, 75, 95)
+BACKGROUND_SIZE = 50  # training rows SHAP compares each prediction against
 
 
 def select_model(evaluation: dict[str, Any]) -> tuple[str, dict[str, Any]]:
@@ -96,6 +97,20 @@ def feature_distributions(ds: Dataset) -> dict[str, dict[str, dict[str, float]]]
         }
         for f in ds.X.columns
     }
+
+
+def explanation_background(ds: Dataset, size: int = BACKGROUND_SIZE) -> list[list[float]]:
+    """A fixed random sample of training rows, used by SHAP as the reference set.
+
+    Stratified by class so the reference keeps the training data's class mix.
+    """
+    rng = np.random.default_rng(0)
+    rows: list[int] = []
+    for label in (0, 1):
+        idx = np.flatnonzero(ds.y.to_numpy() == label)
+        n = round(size * len(idx) / len(ds.y))
+        rows += rng.choice(idx, size=n, replace=False).tolist()
+    return ds.X.iloc[sorted(rows)].to_numpy().tolist()
 
 
 def train(ds: Dataset, model_name: str) -> tuple[Any, dict[str, Any], float]:
@@ -175,6 +190,13 @@ def build_metadata(
             ),
         },
         "feature_distributions": feature_distributions(ds),
+        "base_rate": float(ds.y.mean()),
+        "label_rule": (
+            f"Label from the tuned {model_name}'s own prediction (before calibration), the "
+            "operating point the nested-CV metrics describe. "
+            "The probability is shown separately, next to the training base rate."
+        ),
+        "explanation_background": explanation_background(ds),
         "limitations": [
             "Trained on 195 recordings from 32 subject IDs (8 healthy).",
             "Features are computed with Praat; the training data used MDVP. Values are "

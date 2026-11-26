@@ -108,6 +108,9 @@ def test_main_saves_a_loadable_model_with_metadata(
     assert meta["features"] == list(REPRODUCIBLE_FEATURES)
     assert meta["model_type"] in {"Logistic Regression", "KNN"}
     assert meta["evaluation"]["all_22_features"] is None
+    assert meta["base_rate"] == pytest.approx(60 / 96)  # 10 of 16 synthetic subjects
+    assert len(meta["explanation_background"]) == tf.BACKGROUND_SIZE
+    assert all(len(row) == len(REPRODUCIBLE_FEATURES) for row in meta["explanation_background"])
     for feature in REPRODUCIBLE_FEATURES:
         dist = meta["feature_distributions"][feature]
         assert set(dist) == {"all", "parkinsons", "healthy"}

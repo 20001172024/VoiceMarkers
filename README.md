@@ -31,7 +31,7 @@ relate to the paper's 87.18%.
 - [x] **M1** — reproduce the paper's row-level results ([report](research/results/paper_reproduction.md))
 - [x] **M2** — subject-wise re-evaluation and evaluation report ([report](docs/evaluation.md))
 - [x] **M3** — Parselmouth feature extraction and the deployed model ([validation](research/results/feature_validation.md))
-- [ ] **M4** — prediction API
+- [x] **M4** — prediction API (see [API](#api))
 - [ ] **M5** — frontend
 - [ ] **M6** — deployment
 - [ ] **M7** — polish
@@ -61,6 +61,27 @@ cd frontend && npm install && npm run dev     # http://localhost:5173
 Or run both with Docker: `cp .env.example .env && docker compose up --build`.
 
 Lint hooks: `pre-commit install` (ruff, black, prettier).
+
+## API
+
+Interactive docs at `http://localhost:8000/docs` when the backend is running.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /predict/audio` | Raw audio as the request body (WAV, FLAC, OGG, or browser WebM/MP4 via ffmpeg) → features, probability, label, SHAP contributions, feature ranges |
+| `POST /predict/features` | `{"features": {...}}` with the 15 feature values → same response |
+| `GET /model/info` | Model type, version, training date, features, nested-CV metrics, limitations |
+| `GET /health` | Liveness and whether the model loaded |
+
+```bash
+curl -X POST --data-binary @data/samples/synthetic_steady.wav \
+  -H "Content-Type: audio/wav" http://localhost:8000/predict/audio
+```
+
+Every response, including errors, carries the disclaimer. Audio is read from the
+request body into memory (not a multipart upload, which the server would spool to a
+temporary file above 1 MB) and is never stored or logged. Prediction endpoints are
+limited to 10 requests per minute per client.
 
 ## Dataset
 
