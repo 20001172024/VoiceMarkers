@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "copy-samples": "node scripts/copy-samples.mjs",
+    "predev": "npm run copy-samples",
+    "prebuild": "npm run copy-samples",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -14,7 +17,8 @@
   },
   "dependencies": {
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "recharts": "^3.11.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",
