@@ -9,3 +9,9 @@ export const DISCLAIMER =
 
 export const PRIVACY_NOTICE =
   "Audio is processed in memory and is never stored, logged or sent to third parties.";
+
+export const REPO_URL = "https://github.com/20001172024/VoiceMarkers";
+export const EVALUATION_URL = `${REPO_URL}/blob/main/docs/evaluation.md`;
+/** Link to the ICOIICS 2025 paper; leave empty until a public URL is available. */
+export const PAPER_URL = "";
+export const MAX_UPLOAD_BYTES = 5_000_000;

@@ -1,0 +1,414 @@
+{
+  "disclaimer": "VoiceMarkers is a research and education demo. It is not a medical device and does not diagnose, screen for or rule out Parkinson's disease or any other condition. Predictions on new recordings are not reliable: microphones and recording conditions differ from the training data. Do not use it to make health decisions.",
+  "prediction": {
+    "label": "healthy_like",
+    "label_text": "Voice features are more similar to the healthy group in the training data.",
+    "probability": 0.743306486768782,
+    "base_rate": 0.7538461538461538,
+    "reference_probability": 0.7877786909872383
+  },
+  "contributions": [
+    {
+      "feature": "HNR",
+      "value": 26.805405144940377,
+      "contribution": -0.0229488351349599
+    },
+    {
+      "feature": "MDVP:Fo(Hz)",
+      "value": 140.032774043199,
+      "contribution": 0.022929457034281776
+    },
+    {
+      "feature": "MDVP:Fhi(Hz)",
+      "value": 140.59068142978728,
+      "contribution": 0.013273937687192074
+    },
+    {
+      "feature": "MDVP:Flo(Hz)",
+      "value": 139.49192332652575,
+      "contribution": -0.01303334867916031
+    },
+    {
+      "feature": "MDVP:Jitter(Abs)",
+      "value": 1.7582829766966195e-5,
+      "contribution": -0.01292569276015704
+    },
+    {
+      "feature": "MDVP:Jitter(%)",
+      "value": 0.002462214617780889,
+      "contribution": -0.008245151130534183
+    },
+    {
+      "feature": "MDVP:PPQ",
+      "value": 0.0016518552873409816,
+      "contribution": -0.007444825935528186
+    },
+    {
+      "feature": "Jitter:DDP",
+      "value": 0.004394232504963087,
+      "contribution": -0.0059701423475628885
+    },
+    {
+      "feature": "MDVP:RAP",
+      "value": 0.001464744168321029,
+      "contribution": -0.0055579187700844825
+    },
+    {
+      "feature": "MDVP:APQ",
+      "value": 0.01693760896199703,
+      "contribution": -0.0045496841819431715
+    },
+    {
+      "feature": "MDVP:Shimmer",
+      "value": 0.024933152591595655,
+      "contribution": 0.0
+    },
+    {
+      "feature": "MDVP:Shimmer(dB)",
+      "value": 0.21665691067172738,
+      "contribution": 0.0
+    },
+    {
+      "feature": "Shimmer:APQ3",
+      "value": 0.014859959950449742,
+      "contribution": 0.0
+    },
+    {
+      "feature": "Shimmer:APQ5",
+      "value": 0.015478584319275823,
+      "contribution": 0.0
+    },
+    {
+      "feature": "Shimmer:DDA",
+      "value": 0.04457987985134923,
+      "contribution": 0.0
+    }
+  ],
+  "feature_ranges": [
+    {
+      "feature": "MDVP:Fo(Hz)",
+      "value": 140.032774043199,
+      "parkinsons": {
+        "p5": 99.3938,
+        "p25": 117.572,
+        "p50": 145.174,
+        "p75": 170.071,
+        "p95": 202.75310000000002
+      },
+      "healthy": {
+        "p5": 114.01180000000001,
+        "p25": 120.9475,
+        "p50": 198.996,
+        "p75": 229.077,
+        "p95": 245.328
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "MDVP:Fhi(Hz)",
+      "value": 140.59068142978728,
+      "parkinsons": {
+        "p5": 114.39710000000001,
+        "p25": 133.7765,
+        "p50": 163.335,
+        "p75": 207.1605,
+        "p95": 414.56759999999895
+      },
+      "healthy": {
+        "p5": 120.5467,
+        "p25": 139.41325,
+        "p50": 231.1615,
+        "p75": 251.23925,
+        "p95": 353.29814999999985
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "MDVP:Flo(Hz)",
+      "value": 139.49192332652575,
+      "parkinsons": {
+        "p5": 67.6604,
+        "p25": 80.8755,
+        "p50": 99.77,
+        "p75": 129.24,
+        "p95": 171.74839999999995
+      },
+      "healthy": {
+        "p5": 78.06224999999999,
+        "p25": 98.24375,
+        "p50": 113.9385,
+        "p75": 199.183,
+        "p95": 232.46620000000001
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "MDVP:Jitter(%)",
+      "value": 0.002462214617780889,
+      "parkinsons": {
+        "p5": 0.002616,
+        "p25": 0.004005,
+        "p50": 0.00544,
+        "p75": 0.00767,
+        "p95": 0.016913999999999988
+      },
+      "healthy": {
+        "p5": 0.0018955,
+        "p25": 0.0026550000000000002,
+        "p50": 0.003355,
+        "p75": 0.00453,
+        "p95": 0.007239
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "MDVP:Jitter(Abs)",
+      "value": 1.7582829766966195e-5,
+      "parkinsons": {
+        "p5": 2e-5,
+        "p25": 3e-5,
+        "p50": 4e-5,
+        "p75": 6e-5,
+        "p95": 0.00011
+      },
+      "healthy": {
+        "p5": 9e-6,
+        "p25": 1e-5,
+        "p50": 2.5e-5,
+        "p75": 3e-5,
+        "p95": 4e-5
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "MDVP:RAP",
+      "value": 0.001464744168321029,
+      "parkinsons": {
+        "p5": 0.001166,
+        "p25": 0.00203,
+        "p50": 0.00284,
+        "p75": 0.0040999999999999995,
+        "p95": 0.009728999999999991
+      },
+      "healthy": {
+        "p5": 0.0009785,
+        "p25": 0.0013325,
+        "p50": 0.0016250000000000001,
+        "p75": 0.0019075000000000001,
+        "p95": 0.003973
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "MDVP:PPQ",
+      "value": 0.0016518552873409816,
+      "parkinsons": {
+        "p5": 0.001353,
+        "p25": 0.00219,
+        "p50": 0.00314,
+        "p75": 0.00436,
+        "p95": 0.009578999999999997
+      },
+      "healthy": {
+        "p5": 0.00113,
+        "p25": 0.00148,
+        "p50": 0.001775,
+        "p75": 0.0022275000000000003,
+        "p95": 0.003939
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "Jitter:DDP",
+      "value": 0.004394232504963087,
+      "parkinsons": {
+        "p5": 0.0035080000000000003,
+        "p25": 0.006085,
+        "p50": 0.00853,
+        "p75": 0.0123,
+        "p95": 0.029176999999999974
+      },
+      "healthy": {
+        "p5": 0.0029385,
+        "p25": 0.0039975,
+        "p50": 0.004875,
+        "p75": 0.005725,
+        "p95": 0.011908999999999998
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "MDVP:Shimmer",
+      "value": 0.024933152591595655,
+      "parkinsons": {
+        "p5": 0.011786000000000001,
+        "p25": 0.018295,
+        "p50": 0.02838,
+        "p75": 0.042525,
+        "p95": 0.07002799999999995
+      },
+      "healthy": {
+        "p5": 0.0104405,
+        "p25": 0.014475,
+        "p50": 0.016704999999999998,
+        "p75": 0.02021,
+        "p95": 0.025473999999999997
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "MDVP:Shimmer(dB)",
+      "value": 0.21665691067172738,
+      "parkinsons": {
+        "p5": 0.1085,
+        "p25": 0.168,
+        "p50": 0.263,
+        "p75": 0.3945,
+        "p95": 0.7569999999999995
+      },
+      "healthy": {
+        "p5": 0.09179999999999999,
+        "p25": 0.129,
+        "p50": 0.154,
+        "p75": 0.18925,
+        "p95": 0.25565
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "Shimmer:APQ3",
+      "value": 0.014859959950449742,
+      "parkinsons": {
+        "p5": 0.005584,
+        "p25": 0.009135,
+        "p50": 0.01484,
+        "p75": 0.022815000000000002,
+        "p95": 0.037528999999999986
+      },
+      "healthy": {
+        "p5": 0.0052255,
+        "p25": 0.00735,
+        "p50": 0.008775,
+        "p75": 0.011512499999999998,
+        "p95": 0.014386
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "Shimmer:APQ5",
+      "value": 0.015478584319275823,
+      "parkinsons": {
+        "p5": 0.0064010000000000004,
+        "p25": 0.010575000000000001,
+        "p50": 0.0165,
+        "p75": 0.024935,
+        "p95": 0.045613999999999995
+      },
+      "healthy": {
+        "p5": 0.0065465,
+        "p25": 0.0081925,
+        "p50": 0.010225000000000001,
+        "p75": 0.011980000000000001,
+        "p95": 0.015273999999999998
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "MDVP:APQ",
+      "value": 0.01693760896199703,
+      "parkinsons": {
+        "p5": 0.01024,
+        "p25": 0.015555,
+        "p50": 0.02157,
+        "p75": 0.034824999999999995,
+        "p95": 0.06144099999999998
+      },
+      "healthy": {
+        "p5": 0.0077599999999999995,
+        "p25": 0.011235,
+        "p50": 0.013015,
+        "p75": 0.015945,
+        "p95": 0.019232
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    },
+    {
+      "feature": "Shimmer:DDA",
+      "value": 0.04457987985134923,
+      "parkinsons": {
+        "p5": 0.016752000000000003,
+        "p25": 0.0274,
+        "p50": 0.04451,
+        "p75": 0.06845499999999999,
+        "p95": 0.11257699999999995
+      },
+      "healthy": {
+        "p5": 0.0156865,
+        "p25": 0.02206,
+        "p50": 0.02633,
+        "p75": 0.03454,
+        "p95": 0.043168
+      },
+      "within_training_range": true,
+      "closer_to": "parkinsons"
+    },
+    {
+      "feature": "HNR",
+      "value": 26.805405144940377,
+      "parkinsons": {
+        "p5": 12.3818,
+        "p25": 18.782,
+        "p50": 21.414,
+        "p75": 24.1645,
+        "p95": 26.8297
+      },
+      "healthy": {
+        "p5": 19.1897,
+        "p25": 22.99325,
+        "p50": 24.997,
+        "p75": 26.13925,
+        "p95": 31.4548
+      },
+      "within_training_range": true,
+      "closer_to": "healthy"
+    }
+  ],
+  "features": {
+    "MDVP:Fo(Hz)": 140.032774043199,
+    "MDVP:Fhi(Hz)": 140.59068142978728,
+    "MDVP:Flo(Hz)": 139.49192332652575,
+    "MDVP:Jitter(%)": 0.002462214617780889,
+    "MDVP:Jitter(Abs)": 1.7582829766966195e-5,
+    "MDVP:RAP": 0.001464744168321029,
+    "MDVP:PPQ": 0.0016518552873409816,
+    "Jitter:DDP": 0.004394232504963087,
+    "MDVP:Shimmer": 0.024933152591595655,
+    "MDVP:Shimmer(dB)": 0.21665691067172738,
+    "Shimmer:APQ3": 0.014859959950449742,
+    "Shimmer:APQ5": 0.015478584319275823,
+    "MDVP:APQ": 0.01693760896199703,
+    "Shimmer:DDA": 0.04457987985134923,
+    "HNR": 26.805405144940377
+  },
+  "warnings": [
+    "Predictions on new recordings are not reliable: your microphone and room differ from the training recordings."
+  ],
+  "model": {
+    "type": "SVM",
+    "version": "1.0.0"
+  },
+  "privacy": "Audio is processed in memory and is never stored, logged or sent to third parties."
+}
