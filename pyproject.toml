@@ -16,7 +16,7 @@ select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "data"]
+known-first-party = ["app", "data", "deploy", "research"]
 
 [tool.pytest.ini_options]
 # Run from the repo root: backend tests plus tests for repo-level scripts.
