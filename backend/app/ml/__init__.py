@@ -1,1 +1,1 @@
-"""Model loading, prediction and explanations (M4)."""
+"""Model loading, prediction, explanations and feature-range comparison."""
