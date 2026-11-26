@@ -19,9 +19,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          cache-dependency-path: |
+            backend/pyproject.toml
+            research/requirements.txt
       - name: Install
-        run: pip install -e "backend[dev]"
+        run: pip install -e "backend[dev]" -r research/requirements.txt
       - name: Ruff
         run: ruff check .
       - name: Black
