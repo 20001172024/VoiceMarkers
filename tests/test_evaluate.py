@@ -164,6 +164,11 @@ def test_report_writes_every_section_and_figures(
         str(tmp_path / "paper.json"),
         "--evaluation",
         str(tmp_path / "evaluation.json"),
+        # Don't pick up the real M3 result files from the repo.
+        "--evaluation-reproducible",
+        str(tmp_path / "none.json"),
+        "--model-metadata",
+        str(tmp_path / "none.json"),
     ]
     assert report.main([*args, "--docs-dir", str(docs)]) == 0
 
