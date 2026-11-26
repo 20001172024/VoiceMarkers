@@ -10,34 +10,12 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
-from data.download import EXPECTED_COLUMNS
 from research import reproduce_paper as rp
 from research.dataset import FEATURE_COLUMNS, load_dataset
 from research.metrics import compute_metrics, evaluate_fitted
 from research.models import BASELINE, MODEL_NAMES, build_model
-
-
-@pytest.fixture
-def synthetic_csv(tmp_path: Path) -> Path:
-    """60 recordings from 10 synthetic subjects (7 'Parkinson's', 3 healthy).
-
-    Two features are shifted by class so models can learn something.
-    """
-    rng = np.random.default_rng(0)
-    rows = []
-    for s in range(10):
-        status = 1 if s < 7 else 0
-        for r in range(6):
-            features = rng.normal(size=len(FEATURE_COLUMNS))
-            features[:2] += 1.5 * status
-            row = dict(zip(FEATURE_COLUMNS, features, strict=True))
-            rows.append({"name": f"phon_R01_S{s + 1:02d}_{r + 1}", "status": status, **row})
-    path = tmp_path / "parkinsons.csv"
-    pd.DataFrame(rows)[list(EXPECTED_COLUMNS)].to_csv(path, index=False)
-    return path
 
 
 def test_load_dataset_aligns_features_labels_groups(synthetic_csv: Path) -> None:
