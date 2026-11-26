@@ -1,0 +1,304 @@
+{
+ "samples": {
+  "synthetic_rough": [
+   {
+    "feature": "MDVP:Fo(Hz)",
+    "value": 159.99437531651137,
+    "percentile": 62.05128205128205,
+    "median_parkinsons": 145.174,
+    "median_healthy": 198.996,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Fhi(Hz)",
+    "value": 161.57767388237804,
+    "percentile": 42.05128205128205,
+    "median_parkinsons": 163.335,
+    "median_healthy": 231.1615,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Flo(Hz)",
+    "value": 157.69390936535697,
+    "percentile": 82.56410256410255,
+    "median_parkinsons": 99.77,
+    "median_healthy": 113.9385,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Jitter(%)",
+    "value": 0.008845474240440517,
+    "percentile": 86.66666666666667,
+    "median_parkinsons": 0.00544,
+    "median_healthy": 0.003355,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Jitter(Abs)",
+    "value": 5.527790413449419e-05,
+    "percentile": 74.35897435897436,
+    "median_parkinsons": 4e-05,
+    "median_healthy": 2.5e-05,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:RAP",
+    "value": 0.005146269172646788,
+    "percentile": 89.23076923076924,
+    "median_parkinsons": 0.00284,
+    "median_healthy": 0.0016250000000000001,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:PPQ",
+    "value": 0.005437611265634584,
+    "percentile": 88.71794871794872,
+    "median_parkinsons": 0.00314,
+    "median_healthy": 0.001775,
+    "in_range": true
+   },
+   {
+    "feature": "Jitter:DDP",
+    "value": 0.015438807517940363,
+    "percentile": 89.23076923076924,
+    "median_parkinsons": 0.00853,
+    "median_healthy": 0.004875,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Shimmer",
+    "value": 0.06708881159936429,
+    "percentile": 94.35897435897435,
+    "median_parkinsons": 0.02838,
+    "median_healthy": 0.016704999999999998,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Shimmer(dB)",
+    "value": 0.5830160803239197,
+    "percentile": 91.28205128205128,
+    "median_parkinsons": 0.263,
+    "median_healthy": 0.154,
+    "in_range": true
+   },
+   {
+    "feature": "Shimmer:APQ3",
+    "value": 0.03812301443723488,
+    "percentile": 96.92307692307692,
+    "median_parkinsons": 0.01484,
+    "median_healthy": 0.008775,
+    "in_range": true
+   },
+   {
+    "feature": "Shimmer:APQ5",
+    "value": 0.042452476893736074,
+    "percentile": 93.84615384615384,
+    "median_parkinsons": 0.0165,
+    "median_healthy": 0.010225000000000001,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:APQ",
+    "value": 0.04332501916495285,
+    "percentile": 88.2051282051282,
+    "median_parkinsons": 0.02157,
+    "median_healthy": 0.013015,
+    "in_range": true
+   },
+   {
+    "feature": "Shimmer:DDA",
+    "value": 0.11436904331170464,
+    "percentile": 96.92307692307692,
+    "median_parkinsons": 0.04451,
+    "median_healthy": 0.02633,
+    "in_range": true
+   },
+   {
+    "feature": "HNR",
+    "value": 18.085845796489448,
+    "percentile": 14.871794871794872,
+    "median_parkinsons": 21.414,
+    "median_healthy": 24.997,
+    "in_range": true
+   }
+  ],
+  "synthetic_steady": [
+   {
+    "feature": "MDVP:Fo(Hz)",
+    "value": 140.032774043199,
+    "percentile": 44.1025641025641,
+    "median_parkinsons": 145.174,
+    "median_healthy": 198.996,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Fhi(Hz)",
+    "value": 140.59068142978728,
+    "percentile": 30.256410256410255,
+    "median_parkinsons": 163.335,
+    "median_healthy": 231.1615,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Flo(Hz)",
+    "value": 139.49192332652575,
+    "percentile": 74.87179487179488,
+    "median_parkinsons": 99.77,
+    "median_healthy": 113.9385,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Jitter(%)",
+    "value": 0.002462214617780889,
+    "percentile": 7.179487179487179,
+    "median_parkinsons": 0.00544,
+    "median_healthy": 0.003355,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Jitter(Abs)",
+    "value": 1.7582829766966195e-05,
+    "percentile": 13.333333333333334,
+    "median_parkinsons": 4e-05,
+    "median_healthy": 2.5e-05,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:RAP",
+    "value": 0.001464744168321029,
+    "percentile": 16.41025641025641,
+    "median_parkinsons": 0.00284,
+    "median_healthy": 0.0016250000000000001,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:PPQ",
+    "value": 0.0016518552873409816,
+    "percentile": 16.41025641025641,
+    "median_parkinsons": 0.00314,
+    "median_healthy": 0.001775,
+    "in_range": true
+   },
+   {
+    "feature": "Jitter:DDP",
+    "value": 0.004394232504963087,
+    "percentile": 16.41025641025641,
+    "median_parkinsons": 0.00853,
+    "median_healthy": 0.004875,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Shimmer",
+    "value": 0.024933152591595655,
+    "percentile": 54.35897435897436,
+    "median_parkinsons": 0.02838,
+    "median_healthy": 0.016704999999999998,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:Shimmer(dB)",
+    "value": 0.21665691067172738,
+    "percentile": 49.23076923076923,
+    "median_parkinsons": 0.263,
+    "median_healthy": 0.154,
+    "in_range": true
+   },
+   {
+    "feature": "Shimmer:APQ3",
+    "value": 0.014859959950449742,
+    "percentile": 62.05128205128205,
+    "median_parkinsons": 0.01484,
+    "median_healthy": 0.008775,
+    "in_range": true
+   },
+   {
+    "feature": "Shimmer:APQ5",
+    "value": 0.015478584319275823,
+    "percentile": 56.41025641025641,
+    "median_parkinsons": 0.0165,
+    "median_healthy": 0.010225000000000001,
+    "in_range": true
+   },
+   {
+    "feature": "MDVP:APQ",
+    "value": 0.01693760896199703,
+    "percentile": 44.1025641025641,
+    "median_parkinsons": 0.02157,
+    "median_healthy": 0.013015,
+    "in_range": true
+   },
+   {
+    "feature": "Shimmer:DDA",
+    "value": 0.04457987985134923,
+    "percentile": 62.05128205128205,
+    "median_parkinsons": 0.04451,
+    "median_healthy": 0.02633,
+    "in_range": true
+   },
+   {
+    "feature": "HNR",
+    "value": 26.805405144940377,
+    "percentile": 92.82051282051282,
+    "median_parkinsons": 21.414,
+    "median_healthy": 24.997,
+    "in_range": true
+   }
+  ]
+ },
+ "sweeps": {
+  "jitter": [
+   {
+    "input": 0.002,
+    "measured": 0.0019298589469852092
+   },
+   {
+    "input": 0.004,
+    "measured": 0.0031131084928163475
+   },
+   {
+    "input": 0.008,
+    "measured": 0.00616528492715526
+   },
+   {
+    "input": 0.012,
+    "measured": 0.009542823624994423
+   }
+  ],
+  "shimmer": [
+   {
+    "input": 0.01,
+    "measured": 0.015277216562068758
+   },
+   {
+    "input": 0.03,
+    "measured": 0.03143205574797792
+   },
+   {
+    "input": 0.06,
+    "measured": 0.05970133115973218
+   },
+   {
+    "input": 0.09,
+    "measured": 0.08839671346923307
+   }
+  ],
+  "noise": [
+   {
+    "input": 0.001,
+    "measured": 22.169210029628058
+   },
+   {
+    "input": 0.005,
+    "measured": 21.644810945687514
+   },
+   {
+    "input": 0.02,
+    "measured": 18.187539535062516
+   },
+   {
+    "input": 0.05,
+    "measured": 12.73851850653501
+   }
+  ]
+ }
+}
