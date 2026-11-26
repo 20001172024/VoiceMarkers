@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voicemarkers-backend"
+version = "0.1.0"
+description = "VoiceMarkers API: voice feature extraction and Parkinson's research-demo classifier."
+requires-python = ">=3.11"
+# Deliberately minimal for M0. ML/audio packages (scikit-learn, parselmouth,
+# librosa, mlflow) are added in the milestones that first use them.
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "pydantic>=2.7,<3.0",
+    "pydantic-settings>=2.3,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "black>=24.0",
+    "pre-commit>=3.7",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
