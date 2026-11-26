@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import shutil
 
 import numpy as np
 import pytest
@@ -41,10 +42,21 @@ def test_load_resamples_and_mixes_to_mono() -> None:
     assert audio.duration == pytest.approx(1.0, abs=1e-3)
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 def test_load_rejects_non_audio_bytes() -> None:
     with pytest.raises(AudioError) as exc:
         load_audio(b"definitely not a wav file")
     assert exc.value.code == "decode_failed"
+
+
+def test_without_ffmpeg_non_wav_input_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without ffmpeg we cannot tell WebM from garbage, so we say the format is unsupported."""
+    monkeypatch.setattr("app.audio.load.shutil.which", lambda _: None)
+    with pytest.raises(AudioError) as exc:
+        load_audio(b"maybe webm, maybe garbage")
+    assert exc.value.code == "unsupported_format"
+    # WAV still works without ffmpeg.
+    assert load_audio(to_wav_bytes(synth_vowel(VoiceSpec(duration=2.0)))).duration > 1.9
 
 
 # --------------------------------------------------------------- validation

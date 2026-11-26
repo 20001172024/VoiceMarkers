@@ -143,10 +143,19 @@ def test_rejects_non_audio_content_type(client: TestClient) -> None:
     assert_error(r, 415, "unsupported_media_type")
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 def test_rejects_unreadable_audio(client: TestClient) -> None:
     assert_error(
         client.post("/predict/audio", content=b"not audio", headers=WAV), 400, "decode_failed"
     )
+
+
+def test_unreadable_audio_without_ffmpeg_is_415(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.audio.load.shutil.which", lambda _: None)
+    r = client.post("/predict/audio", content=b"not audio", headers=WAV)
+    assert_error(r, 415, "unsupported_format")
 
 
 def test_rejects_empty_body(client: TestClient) -> None:
