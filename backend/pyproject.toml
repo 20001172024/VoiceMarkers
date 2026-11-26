@@ -7,13 +7,16 @@ name = "voicemarkers-backend"
 version = "0.1.0"
 description = "VoiceMarkers API: voice feature extraction and Parkinson's research-demo classifier."
 requires-python = ">=3.11"
-# Deliberately minimal for M0. ML/audio packages (scikit-learn, parselmouth,
-# librosa, mlflow) are added in the milestones that first use them.
+# Packages are added in the milestone that first uses them.
 dependencies = [
     "fastapi>=0.115,<1.0",
     "uvicorn[standard]>=0.30,<1.0",
     "pydantic>=2.7,<3.0",
     "pydantic-settings>=2.3,<3.0",
+    # Audio feature extraction (M3)
+    "numpy>=2.0,<3.0",
+    "praat-parselmouth>=0.4.3,<0.5",
+    "librosa>=0.10,<0.12",
 ]
 
 [project.optional-dependencies]

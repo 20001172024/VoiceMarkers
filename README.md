@@ -13,6 +13,16 @@ subject-wise cross-validation and reports both sets of numbers side by side.
 > medical device and does not diagnose, screen for or rule out Parkinson's disease
 > or any other condition. Do not use it to make health decisions.
 
+## What this demo can and cannot do
+
+The deployed model is a **demonstration of the method and its limits, not a working
+detector**. Evaluated the way that matters for a new person (subject-wise, on the 15
+features that can be computed from a recording), it reaches roughly 64% balanced
+accuracy, where 50% is chance, with large variation between folds. On recordings made
+with a different microphone or in a different room it is expected to do worse. The
+[evaluation report](docs/evaluation.md) has the full numbers and explains how they
+relate to the paper's 87.18%.
+
 ## Status
 
 🚧 Work in progress. Built milestone by milestone (see [`CLAUDE.md`](CLAUDE.md)):
@@ -20,7 +30,7 @@ subject-wise cross-validation and reports both sets of numbers side by side.
 - [x] **M0** — repo skeleton, `/health` API, dataset download, lint + CI
 - [x] **M1** — reproduce the paper's row-level results ([report](research/results/paper_reproduction.md))
 - [x] **M2** — subject-wise re-evaluation and evaluation report ([report](docs/evaluation.md))
-- [ ] **M3** — Parselmouth feature extraction and the deployed model
+- [x] **M3** — Parselmouth feature extraction and the deployed model ([validation](research/results/feature_validation.md))
 - [ ] **M4** — prediction API
 - [ ] **M5** — frontend
 - [ ] **M6** — deployment
@@ -37,6 +47,9 @@ python -m data.download          # fetches and verifies the UCI dataset
 pytest                           # backend + research + script tests
 python -m research.reproduce_paper   # row-level paper reproduction (~1 min)
 python -m research.evaluate          # subject-wise nested CV, logged to MLflow
+python -m research.evaluate --features reproducible   # same, on the 15 audio features
+python -m research.feature_validation # check extracted features against the dataset
+python -m research.train_final        # train + save backend/models/model.joblib
 python -m research.report            # regenerate docs/evaluation.md
 cd backend && uvicorn app.main:app --reload   # http://localhost:8000/health
 ```

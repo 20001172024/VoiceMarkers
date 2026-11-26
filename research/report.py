@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from sklearn.metrics import roc_curve  # noqa: E402
 
+from research.dataset import FEATURE_COLUMNS  # noqa: E402
 from research.models import BASELINE  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -151,7 +152,65 @@ def plot_roc(ev: dict[str, Any], path: Path) -> None:
 # -------------------------------------------------------------------- report
 
 
-def build_report(paper: dict[str, Any], ev: dict[str, Any], fig_dir: str = "figures") -> str:
+def table3(ev: dict[str, Any], ev_repro: dict[str, Any] | None, meta: dict[str, Any] | None) -> str:
+    """Section 5: full vs audio-reproducible features, and the deployed model."""
+    if ev_repro is None:
+        return "_Not generated yet: run `python -m research.evaluate --features reproducible`._"
+    kept = ev_repro["config"]["features"]
+    dropped = [f for f in FEATURE_COLUMNS if f not in kept]
+    rows = []
+    for m in [m for m in ev_repro["cv"] if m in ev["cv"]]:
+        full = ev["cv"][m]["subject_tuned"]["summary"]
+        repro = ev_repro["cv"][m]["subject_tuned"]["summary"]
+        diff = repro["balanced_accuracy"]["mean"] - full["balanced_accuracy"]["mean"]
+        rows.append(
+            [
+                m,
+                mean_std(full["balanced_accuracy"]),
+                mean_std(repro["balanced_accuracy"]),
+                f"{diff * 100:+.1f} pp",
+                mean_std(full["roc_auc"]),
+                mean_std(repro["roc_auc"]),
+            ]
+        )
+    out = f"""The deployed model may only use features that can be computed from a new recording. Praat reproduces
+{len(kept)} of the {len(FEATURE_COLUMNS)} UCI features (pitch, jitter, shimmer, HNR); the other {len(dropped)}
+({", ".join(f"`{f}`" for f in dropped)}) are dropped. See `backend/app/audio/features.py`
+for why, and [`research/results/feature_validation.md`](../research/results/feature_validation.md) for the range checks.
+
+Both columns use the same nested subject-wise CV (Section 4).
+
+{table(["Model", "Bal. acc., all 22", f"Bal. acc., {len(ev_repro['config']['features'])} reproducible", "Change", "ROC-AUC, all 22", f"ROC-AUC, {len(ev_repro['config']['features'])} reproducible"], rows)}
+"""
+    if meta:
+        sel = meta["selection"]
+        e = meta["evaluation"]["reproducible_features"]
+        params = ", ".join(f"`{k}={v}`" for k, v in meta["params"].items())
+        out += f"""
+### Deployed model
+
+**{meta['model_type']}** (version {meta['model_version']}, trained {meta['trained_at']}), settings {params}, on the
+{len(meta['features'])} reproducible features. Selection rule: {sel['rule']}. Best by mean was {sel['best_model']}
+({pct(sel['best_mean'])}); {PREFERRED} scored {pct(sel['preferred_mean'])}, a gap of {sel['gap'] * 100:.1f} pp against a
+standard error of {sel['standard_error'] * 100:.1f} pp.
+
+Its honest performance estimate is the nested-CV result: **balanced accuracy {mean_std(e['balanced_accuracy'])}**,
+recall {mean_std(e['recall'])}, specificity {mean_std(e['specificity'])}, ROC-AUC {mean_std(e['roc_auc'])}.
+These numbers hold for recordings like the training data; on new microphones and rooms they are expected to be worse.
+"""
+    return out
+
+
+PREFERRED = "Logistic Regression"
+
+
+def build_report(
+    paper: dict[str, Any],
+    ev: dict[str, Any],
+    fig_dir: str = "figures",
+    ev_repro: dict[str, Any] | None = None,
+    meta: dict[str, Any] | None = None,
+) -> str:
     """Return the Markdown report (figures referenced relative to docs/)."""
     d, c = ev["dataset"], ev["config"]
     cv = ev["cv"]
@@ -386,7 +445,7 @@ Full grids and per-fold choices are in `research/results/evaluation.json` and ML
 
 ## 5. Table 3 — full-feature vs audio-reproducible-feature model
 
-_Added in M3, once the Parselmouth feature extraction defines which features can be reproduced from raw audio._
+{table3(ev, ev_repro, meta)}
 
 ## 6. Confusion matrices and ROC curves
 
@@ -445,6 +504,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate docs/evaluation.md.")
     parser.add_argument("--paper", type=Path, default=RESULTS_DIR / "paper_reproduction.json")
     parser.add_argument("--evaluation", type=Path, default=RESULTS_DIR / "evaluation.json")
+    parser.add_argument(
+        "--evaluation-reproducible",
+        type=Path,
+        default=RESULTS_DIR / "evaluation_reproducible.json",
+    )
+    parser.add_argument(
+        "--model-metadata",
+        type=Path,
+        default=REPO_ROOT / "backend" / "models" / "model_metadata.json",
+    )
     parser.add_argument("--docs-dir", type=Path, default=DOCS_DIR)
     args = parser.parse_args(argv)
 
@@ -454,7 +523,14 @@ def main(argv: list[str] | None = None) -> int:
     fig_dir.mkdir(parents=True, exist_ok=True)
     plot_protocols(ev, fig_dir / "protocol_comparison.png")
     plot_roc(ev, fig_dir / "roc_subject_tuned.png")
-    (args.docs_dir / "evaluation.md").write_text(build_report(paper, ev))
+    ev_repro = (
+        json.loads(args.evaluation_reproducible.read_text())
+        if args.evaluation_reproducible.exists()
+        else None
+    )
+    meta = json.loads(args.model_metadata.read_text()) if args.model_metadata.exists() else None
+    report_md = build_report(paper, ev, ev_repro=ev_repro, meta=meta)
+    (args.docs_dir / "evaluation.md").write_text(report_md)
     print(f"Wrote {args.docs_dir / 'evaluation.md'}")
     return 0
 

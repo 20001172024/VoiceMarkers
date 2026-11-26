@@ -117,7 +117,33 @@ Full grids and per-fold choices are in `research/results/evaluation.json` and ML
 
 ## 5. Table 3 — full-feature vs audio-reproducible-feature model
 
-_Added in M3, once the Parselmouth feature extraction defines which features can be reproduced from raw audio._
+The deployed model may only use features that can be computed from a new recording. Praat reproduces
+15 of the 22 UCI features (pitch, jitter, shimmer, HNR); the other 7
+(`NHR`, `RPDE`, `DFA`, `spread1`, `spread2`, `D2`, `PPE`) are dropped. See `backend/app/audio/features.py`
+for why, and [`research/results/feature_validation.md`](../research/results/feature_validation.md) for the range checks.
+
+Both columns use the same nested subject-wise CV (Section 4).
+
+| Model | Bal. acc., all 22 | Bal. acc., 15 reproducible | Change | ROC-AUC, all 22 | ROC-AUC, 15 reproducible |
+|---|---|---|---|---|---|
+| Majority baseline | 50.0% ± 0.0% | 50.0% ± 0.0% | +0.0 pp | 50.0% ± 0.0% | 50.0% ± 0.0% |
+| SVM | 64.7% ± 17.5% | 64.1% ± 16.8% | -0.6 pp | 72.6% ± 25.4% | 71.5% ± 20.4% |
+| Random Forest | 59.6% ± 16.7% | 57.1% ± 15.7% | -2.6 pp | 77.8% ± 16.4% | 73.8% ± 16.4% |
+| Logistic Regression | 63.6% ± 18.9% | 58.1% ± 17.5% | -5.5 pp | 78.6% ± 20.1% | 73.0% ± 19.9% |
+| KNN | 60.0% ± 14.7% | 59.1% ± 13.9% | -0.9 pp | 74.6% ± 17.3% | 75.7% ± 15.1% |
+| Gradient Boosting | 65.1% ± 16.4% | 57.7% ± 15.0% | -7.3 pp | 74.0% ± 17.3% | 63.9% ± 21.3% |
+
+### Deployed model
+
+**SVM** (version 1.0.0, trained 2026-11-26), settings `C=0.1`, `class_weight=balanced`, `gamma=0.01`, on the
+15 reproducible features. Selection rule: Logistic Regression unless its mean subject-wise tuned balanced accuracy is more than one standard error below the best model's. Best by mean was SVM
+(64.1%); Logistic Regression scored 58.1%, a gap of 6.0 pp against a
+standard error of 2.4 pp.
+
+Its honest performance estimate is the nested-CV result: **balanced accuracy 64.1% ± 16.8%**,
+recall 64.4% ± 21.7%, specificity 63.8% ± 40.7%, ROC-AUC 71.5% ± 20.4%.
+These numbers hold for recordings like the training data; on new microphones and rooms they are expected to be worse.
+
 
 ## 6. Confusion matrices and ROC curves
 

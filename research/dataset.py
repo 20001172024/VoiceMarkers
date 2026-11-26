@@ -24,6 +24,13 @@ class Dataset:
     groups: pd.Series  # subject ID per recording, for subject-wise CV (M2)
     sha256: str
 
+    def select(self, columns: tuple[str, ...] | list[str]) -> Dataset:
+        """Return a copy restricted to the given feature columns (same rows)."""
+        missing = set(columns) - set(self.X.columns)
+        if missing:
+            raise KeyError(f"Unknown feature columns: {sorted(missing)}")
+        return Dataset(self.X[list(columns)], self.y, self.groups, self.sha256)
+
 
 def load_dataset(path: Path = DEFAULT_DEST) -> Dataset:
     """Read and validate the dataset CSV written by `data/download.py`.

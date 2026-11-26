@@ -45,6 +45,7 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 
+from app.audio.features import REPRODUCIBLE_FEATURES
 from data.download import DEFAULT_DEST
 from research.dataset import Dataset, load_dataset
 from research.metrics import SCALAR_METRICS, compute_metrics, evaluate_fitted, positive_scores
@@ -92,6 +93,7 @@ PARAM_GRIDS: dict[str, dict[str, list[Any]]] = {
     },
 }
 PROTOCOLS: tuple[str, ...] = ("row_default", "subject_default", "subject_tuned")
+FEATURE_SETS: tuple[str, ...] = ("all", "reproducible")
 
 
 @dataclass(frozen=True)
@@ -284,6 +286,7 @@ def _log_to_mlflow(results: dict[str, Any], tracking_uri: str) -> None:
         for protocol, res in by_protocol.items():
             with mlflow.start_run(run_name=f"{name} | {protocol}"):
                 mlflow.log_params({**common, "model": name, "protocol": protocol})
+                mlflow.set_tag("feature_set", results["config"]["feature_set"])
                 for m, s in res["summary"].items():
                     mlflow.log_metric(f"{m}_mean", s["mean"])
                     mlflow.log_metric(f"{m}_std", s["std"])
@@ -302,8 +305,13 @@ def run(
     n_repeats: int = N_REPEATS,
     inner_splits: int = INNER_SPLITS,
     models: tuple[str, ...] = MODEL_NAMES,
+    feature_set: str = "all",
 ) -> dict[str, Any]:
-    """Run every protocol for every model, LOSO, and feature importance."""
+    """Run every protocol for every model, LOSO, and feature importance.
+
+    `feature_set` is a label recorded in the results; the features used are
+    whatever columns `ds.X` holds.
+    """
     results: dict[str, Any] = {
         "dataset": {
             "sha256": ds.sha256,
@@ -321,6 +329,8 @@ def run(
             "n_repeats": n_repeats,
             "inner_splits": inner_splits,
             "tuning_metric": TUNING_METRIC,
+            "feature_set": feature_set,
+            "features": list(ds.X.columns),
         },
         "param_grids": {k: v for k, v in PARAM_GRIDS.items() if k in models},
         "cv": {},
@@ -356,7 +366,13 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point: evaluate, write JSON, log to MLflow."""
     parser = argparse.ArgumentParser(description="Subject-wise evaluation of every model.")
     parser.add_argument("--data", type=Path, default=DEFAULT_DEST)
-    parser.add_argument("--out", type=Path, default=RESULTS_DIR / "evaluation.json")
+    parser.add_argument(
+        "--features",
+        choices=FEATURE_SETS,
+        default="all",
+        help="all 22 UCI features, or only the 15 reproducible from audio (M3)",
+    )
+    parser.add_argument("--out", type=Path, help="default: results/evaluation[_reproducible].json")
     parser.add_argument("--n-splits", type=int, default=N_SPLITS)
     parser.add_argument("--n-repeats", type=int, default=N_REPEATS)
     parser.add_argument("--inner-splits", type=int, default=INNER_SPLITS)
@@ -364,15 +380,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-mlflow", action="store_true", help="skip MLflow logging")
     args = parser.parse_args(argv)
 
+    ds = load_dataset(args.data)
+    if args.features == "reproducible":
+        ds = ds.select(REPRODUCIBLE_FEATURES)
+    out = args.out or RESULTS_DIR / (
+        "evaluation.json" if args.features == "all" else "evaluation_reproducible.json"
+    )
     results = run(
-        load_dataset(args.data),
+        ds,
         n_splits=args.n_splits,
         n_repeats=args.n_repeats,
         inner_splits=args.inner_splits,
+        feature_set=args.features,
     )
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(results, indent=1, default=float) + "\n")
-    print(f"Wrote {args.out}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=1, default=float) + "\n")
+    print(f"Wrote {out}")
     if not args.no_mlflow:
         _log_to_mlflow(results, args.tracking_uri)
         print(f"Logged runs to MLflow ({args.tracking_uri})")
