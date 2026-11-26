@@ -172,7 +172,15 @@ def test_report_writes_every_section_and_figures(
     ]
     assert (
         report.main(
-            [*args, "--docs-dir", str(docs), "--frontend-summary", str(tmp_path / "summary.json")]
+            [
+                *args,
+                "--docs-dir",
+                str(docs),
+                "--readme",
+                str(tmp_path / "no-readme.md"),
+                "--frontend-summary",
+                str(tmp_path / "summary.json"),
+            ]
         )
         == 0
     )
