@@ -1,0 +1,181 @@
+{
+  "generated_by": "research/report.py",
+  "dataset": {
+    "n_recordings": 195,
+    "n_parkinsons": 147,
+    "n_healthy": 48,
+    "n_subject_ids": 32,
+    "n_parkinsons_subjects": 24,
+    "n_healthy_subjects": 8
+  },
+  "paper": {
+    "reported_svm_accuracy": 0.8717948717948718,
+    "svm_accuracy_200_splits": {
+      "mean": 0.8774358974358976,
+      "std": 0.048796158545088335
+    }
+  },
+  "baseline_accuracy": {
+    "mean": 0.7561985573613481,
+    "std": 0.06739916389897398
+  },
+  "n_outer_folds": 50,
+  "protocols": {
+    "SVM": {
+      "row_default": {
+        "mean": 0.7520651340996167,
+        "std": 0.06539211113240595
+      },
+      "subject_default": {
+        "mean": 0.6314709677419355,
+        "std": 0.17008690784868924
+      },
+      "subject_tuned": {
+        "mean": 0.6468440860215054,
+        "std": 0.1751422068094428
+      }
+    },
+    "Random Forest": {
+      "row_default": {
+        "mean": 0.852632183908046,
+        "std": 0.06710638893493036
+      },
+      "subject_default": {
+        "mean": 0.6194204301075269,
+        "std": 0.17181938870329483
+      },
+      "subject_tuned": {
+        "mean": 0.5963236559139785,
+        "std": 0.1666637002476212
+      }
+    },
+    "Logistic Regression": {
+      "row_default": {
+        "mean": 0.7746551724137931,
+        "std": 0.07328311385747358
+      },
+      "subject_default": {
+        "mean": 0.659916129032258,
+        "std": 0.20884576622711523
+      },
+      "subject_tuned": {
+        "mean": 0.6362677419354839,
+        "std": 0.18873626841113186
+      }
+    },
+    "KNN": {
+      "row_default": {
+        "mean": 0.8642950191570882,
+        "std": 0.06198518410157041
+      },
+      "subject_default": {
+        "mean": 0.6025301075268817,
+        "std": 0.14894076052471864
+      },
+      "subject_tuned": {
+        "mean": 0.5995688172043011,
+        "std": 0.1469213534156629
+      }
+    },
+    "Gradient Boosting": {
+      "row_default": {
+        "mean": 0.8726628352490421,
+        "std": 0.06356600413296065
+      },
+      "subject_default": {
+        "mean": 0.6412494623655914,
+        "std": 0.16474766915452482
+      },
+      "subject_tuned": {
+        "mean": 0.6506311827956989,
+        "std": 0.1635238784666213
+      }
+    }
+  },
+  "reproducible": {
+    "n_features": 15,
+    "dropped": [
+      "NHR",
+      "RPDE",
+      "DFA",
+      "spread1",
+      "spread2",
+      "D2",
+      "PPE"
+    ],
+    "balanced_accuracy": {
+      "SVM": {
+        "all": {
+          "mean": 0.6468440860215054,
+          "std": 0.1751422068094428
+        },
+        "reproducible": {
+          "mean": 0.6411645161290322,
+          "std": 0.1681908387490317
+        }
+      },
+      "Random Forest": {
+        "all": {
+          "mean": 0.5963236559139785,
+          "std": 0.1666637002476212
+        },
+        "reproducible": {
+          "mean": 0.5706731182795699,
+          "std": 0.1567145022726649
+        }
+      },
+      "Logistic Regression": {
+        "all": {
+          "mean": 0.6362677419354839,
+          "std": 0.18873626841113186
+        },
+        "reproducible": {
+          "mean": 0.5814903225806451,
+          "std": 0.17542345643312401
+        }
+      },
+      "KNN": {
+        "all": {
+          "mean": 0.5995688172043011,
+          "std": 0.1469213534156629
+        },
+        "reproducible": {
+          "mean": 0.5910645161290323,
+          "std": 0.13910718485987436
+        }
+      },
+      "Gradient Boosting": {
+        "all": {
+          "mean": 0.6506311827956989,
+          "std": 0.1635238784666213
+        },
+        "reproducible": {
+          "mean": 0.5774602150537635,
+          "std": 0.15015090399846884
+        }
+      }
+    }
+  },
+  "deployed": {
+    "model_type": "SVM",
+    "model_version": "1.0.0",
+    "metrics": {
+      "balanced_accuracy": {
+        "mean": 0.6411645161290322,
+        "std": 0.1681908387490317
+      },
+      "recall": {
+        "mean": 0.6439956989247311,
+        "std": 0.21714618232340577
+      },
+      "specificity": {
+        "mean": 0.6383333333333333,
+        "std": 0.4070933553866975
+      },
+      "roc_auc": {
+        "mean": 0.71494229390681,
+        "std": 0.20440087360926587
+      }
+    }
+  }
+}

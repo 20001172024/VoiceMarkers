@@ -170,7 +170,12 @@ def test_report_writes_every_section_and_figures(
         "--model-metadata",
         str(tmp_path / "none.json"),
     ]
-    assert report.main([*args, "--docs-dir", str(docs)]) == 0
+    assert (
+        report.main(
+            [*args, "--docs-dir", str(docs), "--frontend-summary", str(tmp_path / "summary.json")]
+        )
+        == 0
+    )
 
     md = (docs / "evaluation.md").read_text()
     for heading in [

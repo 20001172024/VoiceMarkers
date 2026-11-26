@@ -32,7 +32,7 @@ relate to the paper's 87.18%.
 - [x] **M2** — subject-wise re-evaluation and evaluation report ([report](docs/evaluation.md))
 - [x] **M3** — Parselmouth feature extraction and the deployed model ([validation](research/results/feature_validation.md))
 - [x] **M4** — prediction API (see [API](#api))
-- [ ] **M5** — frontend
+- [x] **M5** — frontend (record, upload or try a sample; results with explanations; About the model)
 - [ ] **M6** — deployment
 - [ ] **M7** — polish
 
@@ -55,7 +55,8 @@ cd backend && uvicorn app.main:app --reload   # http://localhost:8000/health
 ```
 
 ```bash
-cd frontend && npm install && npm run dev     # http://localhost:5173
+cd frontend && npm install && npm run dev     # http://localhost:5173 (needs the backend running)
+cd frontend && npm test                       # Vitest + Testing Library
 ```
 
 Or run both with Docker: `cp .env.example .env && docker compose up --build`.

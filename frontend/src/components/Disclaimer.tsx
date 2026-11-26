@@ -1,13 +1,13 @@
 import { DISCLAIMER } from "../constants";
 
-export function Disclaimer() {
+export function Disclaimer({ text = DISCLAIMER }: { text?: string }) {
   return (
     <aside
       role="note"
       aria-label="Disclaimer"
-      className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+      className="rounded-md border border-warn-line bg-warn-bg p-3 text-sm text-warn-ink"
     >
-      <strong>Disclaimer:</strong> {DISCLAIMER}
+      <strong>Not a medical tool.</strong> {text}
     </aside>
   );
 }
