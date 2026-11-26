@@ -15,6 +15,7 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     model_loaded: bool
+    build: str
     disclaimer: str
 
 
@@ -23,5 +24,9 @@ def health(request: Request) -> HealthResponse:
     """Report that the API process is up, and whether the model loaded."""
     loaded = getattr(request.app.state, "model", None) is not None
     return HealthResponse(
-        status="ok", version=__version__, model_loaded=loaded, disclaimer=DISCLAIMER
+        status="ok",
+        version=__version__,
+        model_loaded=loaded,
+        build=request.app.state.settings.build_sha,
+        disclaimer=DISCLAIMER,
     )

@@ -2,8 +2,13 @@
 
 Fixed one-minute windows per client IP. State lives in this process only, so
 with several server processes each one counts separately; that is acceptable
-for a single free-tier instance and keeps the demo dependency-free. Behind a
-proxy, the client IP comes from the first `X-Forwarded-For` entry.
+for a single free-tier instance and keeps the demo dependency-free.
+
+Behind proxies, the client IP is taken from `X-Forwarded-For` counting from the
+*right*: each proxy appends the address it saw, so the rightmost entries are
+written by trusted infrastructure while the leftmost ones are whatever the
+client chose to send. Trusting the first entry would let anyone dodge the limit
+by sending a fake header.
 """
 
 from __future__ import annotations
@@ -53,9 +58,16 @@ class RateLimiter:
                 }
 
 
-def client_id(request: Request) -> str:
-    """Best-effort client identifier (first X-Forwarded-For hop, else peer address)."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+def client_id(request: Request, forwarded_hops: int = 0) -> str:
+    """The client's IP: the `forwarded_hops`-th X-Forwarded-For entry from the right.
+
+    With `forwarded_hops == 0`, or if the header has too few entries, the
+    connection's peer address is used.
+    """
+    peer = request.client.host if request.client else "unknown"
+    if forwarded_hops <= 0:
+        return peer
+    entries = [
+        e.strip() for e in request.headers.get("x-forwarded-for", "").split(",") if e.strip()
+    ]
+    return entries[-forwarded_hops] if len(entries) >= forwarded_hops else peer

@@ -270,3 +270,44 @@ def test_compare_places_values_between_groups() -> None:
     assert compare({"x": 5.0}, metadata)[0].closer_to == "neither"
     assert compare({"x": 10.0}, metadata)[0].within_training_range is False
     assert math.isclose(compare({"x": 5.0}, metadata)[0].value, 5.0)
+
+
+# ------------------------------------------------------- proxies and build id
+
+
+def _request(xff: str | None, peer: str = "10.0.0.9"):  # type: ignore[no-untyped-def]
+    from starlette.requests import Request
+
+    headers = [(b"x-forwarded-for", xff.encode())] if xff is not None else []
+    return Request({"type": "http", "headers": headers, "client": (peer, 1234)})
+
+
+def test_client_id_ignores_forwarded_header_without_trusted_proxies() -> None:
+    from app.ratelimit import client_id
+
+    assert client_id(_request("1.2.3.4"), forwarded_hops=0) == "10.0.0.9"
+
+
+def test_client_id_uses_the_entry_added_by_the_trusted_proxy() -> None:
+    from app.ratelimit import client_id
+
+    # A client spoofs "6.6.6.6"; the proxy appends the real address 5.5.5.5.
+    assert client_id(_request("6.6.6.6, 5.5.5.5"), forwarded_hops=1) == "5.5.5.5"
+    assert client_id(_request("6.6.6.6, 5.5.5.5, 172.16.0.1"), forwarded_hops=2) == "5.5.5.5"
+    # Too few entries: fall back to the peer address.
+    assert client_id(_request("5.5.5.5"), forwarded_hops=2) == "10.0.0.9"
+    assert client_id(_request(None), forwarded_hops=1) == "10.0.0.9"
+
+
+def test_spoofed_forwarded_header_cannot_dodge_the_rate_limit() -> None:
+    settings = Settings(rate_limit_per_minute=1, forwarded_hops=1)
+    with TestClient(create_app(settings)) as c:
+        first = {"X-Forwarded-For": "1.1.1.1, 9.9.9.9", **WAV}
+        second = {"X-Forwarded-For": "2.2.2.2, 9.9.9.9", **WAV}  # new fake prefix, same real IP
+        assert c.post("/predict/audio", content=b"", headers=first).status_code == 400
+        assert_error(c.post("/predict/audio", content=b"", headers=second), 429, "rate_limited")
+
+
+def test_health_reports_the_build() -> None:
+    with make_client(build_sha="abc123") as c:
+        assert c.get("/health").json()["build"] == "abc123"
