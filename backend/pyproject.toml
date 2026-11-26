@@ -17,6 +17,11 @@ dependencies = [
     "numpy>=2.0,<3.0",
     "praat-parselmouth>=0.4.3,<0.5",
     "librosa>=0.10,<0.12",
+    # Prediction API (M4)
+    "pandas>=2.2,<4.0",
+    # Pinned exactly: the saved model must load with the version that trained it.
+    "scikit-learn==1.9.1",
+    "shap>=0.46,<1.0",
 ]
 
 [project.optional-dependencies]
