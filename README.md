@@ -19,7 +19,7 @@ subject-wise cross-validation and reports both sets of numbers side by side.
 
 - [x] **M0** — repo skeleton, `/health` API, dataset download, lint + CI
 - [x] **M1** — reproduce the paper's row-level results ([report](research/results/paper_reproduction.md))
-- [ ] **M2** — subject-wise re-evaluation and evaluation report
+- [x] **M2** — subject-wise re-evaluation and evaluation report ([report](docs/evaluation.md))
 - [ ] **M3** — Parselmouth feature extraction and the deployed model
 - [ ] **M4** — prediction API
 - [ ] **M5** — frontend
@@ -36,6 +36,8 @@ pip install -e "backend[dev]" -r research/requirements.txt
 python -m data.download          # fetches and verifies the UCI dataset
 pytest                           # backend + research + script tests
 python -m research.reproduce_paper   # row-level paper reproduction (~1 min)
+python -m research.evaluate          # subject-wise nested CV, logged to MLflow
+python -m research.report            # regenerate docs/evaluation.md
 cd backend && uvicorn app.main:app --reload   # http://localhost:8000/health
 ```
 
