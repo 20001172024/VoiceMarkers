@@ -1,20 +1,33 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import App from "./App";
-import { DISCLAIMER, PRIVACY_NOTICE } from "./constants";
+import { DISCLAIMER } from "./constants";
+
+afterEach(() => {
+  window.location.hash = "";
+});
 
 describe("App", () => {
-  it("renders the title", () => {
+  it("renders the analyse page with the disclaimer by default", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "VoiceMarkers" })).toBeInTheDocument();
-  });
-
-  it("always shows the disclaimer", () => {
-    render(<App />);
+    expect(screen.getByRole("link", { name: "Analyse" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("note", { name: "Disclaimer" })).toHaveTextContent(DISCLAIMER);
   });
 
-  it("shows the privacy notice", () => {
+  it("navigates to the About page via the hash", () => {
     render(<App />);
-    expect(screen.getByRole("note", { name: "Privacy" })).toHaveTextContent(PRIVACY_NOTICE);
+    act(() => {
+      window.location.hash = "#/about";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(screen.getByRole("heading", { level: 1, name: "About the model" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "About the model" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("has a skip link to the main content", () => {
+    render(<App />);
+    expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main");
   });
 });
