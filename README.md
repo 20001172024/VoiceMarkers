@@ -33,7 +33,7 @@ relate to the paper's 87.18%.
 - [x] **M3** — Parselmouth feature extraction and the deployed model ([validation](research/results/feature_validation.md))
 - [x] **M4** — prediction API (see [API](#api))
 - [x] **M5** — frontend (record, upload or try a sample; results with explanations; About the model)
-- [ ] **M6** — deployment
+- [x] **M6** — deployment pipeline (Hugging Face Space + Vercel, see [docs/deployment.md](docs/deployment.md))
 - [ ] **M7** — polish
 
 ## Quick start
