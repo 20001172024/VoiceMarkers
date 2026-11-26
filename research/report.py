@@ -1,0 +1,463 @@
+"""Generate docs/evaluation.md and its figures from the saved result files.
+
+Inputs (written by the scripts, never by hand):
+- research/results/paper_reproduction.json  (M1, row-level reproduction)
+- research/results/evaluation.json          (M2, subject-wise evaluation)
+
+Every number in the report, including those inside the discussion text, is
+read from these files.
+
+Usage (from the repo root):
+    python -m research.report
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+import matplotlib
+
+matplotlib.use("Agg")  # headless: no display needed
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+from sklearn.metrics import roc_curve  # noqa: E402
+
+from research.models import BASELINE  # noqa: E402
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+RESULTS_DIR = REPO_ROOT / "research" / "results"
+DOCS_DIR = REPO_ROOT / "docs"
+
+PROTOCOL_LABELS = {
+    "row_default": "Row-level, default settings (paper setup)",
+    "subject_default": "Subject-wise, default settings",
+    "subject_tuned": "Subject-wise, tuned (nested CV)",
+}
+METRIC_LABELS = {
+    "balanced_accuracy": "Bal. acc.",
+    "accuracy": "Accuracy",
+    "precision": "Precision",
+    "recall": "Recall",
+    "specificity": "Specificity",
+    "f1": "F1",
+    "roc_auc": "ROC-AUC",
+}
+
+# Reference palette, first three categorical slots (validated all-pairs, light mode).
+# Their contrast on white is below 3:1 for two slots, so every chart also uses
+# distinct marker shapes and every plotted number is repeated in a table.
+SERIES = {"row_default": "#257de0", "subject_default": "#f47230", "subject_tuned": "#00b894"}
+MARKERS = {"row_default": "o", "subject_default": "s", "subject_tuned": "D"}
+TEXT, TEXT_2, GRID = "#191919", "#666666", "#e6e6e6"
+
+
+# ---------------------------------------------------------------- formatting
+
+
+def pct(x: float) -> str:
+    """Format a fraction as a percentage; NaN becomes 'n/a'."""
+    return "n/a" if x is None or math.isnan(x) else f"{x:.1%}"
+
+
+def mean_std(s: dict[str, float]) -> str:
+    """Format a {mean, std} summary."""
+    return "n/a" if math.isnan(s["mean"]) else f"{s['mean']:.1%} ± {s['std']:.1%}"
+
+
+def table(header: list[str], rows: list[list[str]]) -> str:
+    """Render a Markdown table."""
+    lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
+    lines += ["| " + " | ".join(r) + " |" for r in rows]
+    return "\n".join(lines)
+
+
+def _params(p: dict[str, Any]) -> str:
+    return ", ".join(f"`{k.removeprefix('clf__')}={v}`" for k, v in p.items())
+
+
+# ------------------------------------------------------------------- figures
+
+
+def _style(ax: plt.Axes) -> None:
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.spines[["left", "bottom"]].set_color(TEXT_2)
+    ax.tick_params(colors=TEXT_2, labelcolor=TEXT)
+    ax.grid(color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
+
+
+def plot_protocols(ev: dict[str, Any], path: Path) -> None:
+    """Dot plot: balanced accuracy per model under each protocol."""
+    models = list(ev["cv"])
+    fig, ax = plt.subplots(figsize=(7.5, 0.55 * len(models) + 1.4), dpi=150)
+    for i, protocol in enumerate(PROTOCOL_LABELS):
+        y = np.arange(len(models)) + (i - 1) * 0.22
+        x = [ev["cv"][m][protocol]["summary"]["balanced_accuracy"]["mean"] for m in models]
+        ax.scatter(
+            x,
+            y,
+            s=50,
+            color=SERIES[protocol],
+            marker=MARKERS[protocol],
+            edgecolor="white",
+            linewidth=1.5,
+            label=PROTOCOL_LABELS[protocol],
+            zorder=3,
+        )
+    ax.axvline(0.5, color=TEXT_2, linewidth=1, linestyle="--", zorder=2)
+    ax.text(0.505, -0.55, "chance (0.5)", color=TEXT_2, fontsize=8, va="bottom")
+    ax.set_yticks(range(len(models)), models)
+    ax.invert_yaxis()
+    ax.set_xlim(0.4, 1.0)
+    ax.set_xlabel("Balanced accuracy (mean over 50 outer folds)", color=TEXT)
+    _style(ax)
+    ax.grid(axis="y", visible=False)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=1, frameon=False, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, metadata={"Software": None})
+    plt.close(fig)
+
+
+def plot_roc(ev: dict[str, Any], path: Path) -> None:
+    """Small multiples: subject-wise tuned ROC curve per model (repeat-0 out-of-fold scores)."""
+    y = np.array(ev["dataset"]["y"])
+    models = [m for m in ev["cv"] if m != BASELINE]
+    cols = 3
+    rows = math.ceil(len(models) / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(9, 3.1 * rows), dpi=150, squeeze=False)
+    for ax, name in zip(axes.flat, models, strict=False):
+        oof = ev["cv"][name]["subject_tuned"]["oof_repeat0"]
+        fpr, tpr, _ = roc_curve(y, oof["score"])
+        ax.plot([0, 1], [0, 1], color=TEXT_2, linewidth=1, linestyle="--")
+        ax.plot(fpr, tpr, color=SERIES["row_default"], linewidth=2)
+        ax.set_title(f"{name}\npooled AUC {oof['pooled']['roc_auc']:.2f}", fontsize=9, color=TEXT)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1.02)
+        ax.set_aspect("equal")
+        _style(ax)
+    for ax in axes.flat[len(models) :]:
+        ax.axis("off")
+    fig.supxlabel("False positive rate (healthy recordings flagged)", fontsize=9, color=TEXT)
+    fig.supylabel("True positive rate (Parkinson's recordings detected)", fontsize=9, color=TEXT)
+    fig.tight_layout()
+    fig.savefig(path, metadata={"Software": None})
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------- report
+
+
+def build_report(paper: dict[str, Any], ev: dict[str, Any], fig_dir: str = "figures") -> str:
+    """Return the Markdown report (figures referenced relative to docs/)."""
+    d, c = ev["dataset"], ev["config"]
+    cv = ev["cv"]
+    models = [m for m in cv if m != BASELINE]
+    n_outer = c["n_splits"] * c["n_repeats"]
+
+    def s(model: str, protocol: str, metric: str) -> dict[str, float]:
+        return cv[model][protocol]["summary"][metric]
+
+    # --- Table 1: paper reproduction (from M1 output)
+    pr = paper["repeated_splits"]
+    t1 = table(
+        ["Model", "Accuracy, 200 random 80/20 splits", "5th–95th pct", "Bal. acc.", "ROC-AUC"],
+        [
+            [
+                m,
+                mean_std(pr[m]["accuracy"]),
+                f"{pct(pr[m]['accuracy']['p5'])} – {pct(pr[m]['accuracy']['p95'])}",
+                mean_std(pr[m]["balanced_accuracy"]),
+                mean_std(pr[m]["roc_auc"]),
+            ]
+            for m in pr
+        ],
+    )
+
+    # --- Table 2: subject-wise tuned, all metrics
+    metric_order = list(METRIC_LABELS)
+    t2 = table(
+        ["Model", *METRIC_LABELS.values()],
+        [[m] + [mean_std(s(m, "subject_tuned", k)) for k in metric_order] for m in cv],
+    )
+
+    # --- Table 2b: protocol comparison
+    short = {
+        "row_default": "Row-level, default",
+        "subject_default": "Subject-wise, default",
+        "subject_tuned": "Subject-wise, tuned",
+    }
+
+    def protocol_table(metric: str) -> str:
+        return table(
+            ["Model", *short.values()],
+            [[m] + [mean_std(s(m, p, metric)) for p in short] for m in cv],
+        )
+
+    t2b_bal = protocol_table("balanced_accuracy")
+    t2b_acc = protocol_table("accuracy")
+
+    # --- Table 2c: LOSO pooled
+    loso = ev["loso"]
+    t2c = table(
+        ["Model", "Setting", "Accuracy", "Bal. acc.", "Recall", "Specificity", "ROC-AUC"],
+        [
+            [m, t]
+            + [
+                pct(loso[m][t][k])
+                for k in ("accuracy", "balanced_accuracy", "recall", "specificity", "roc_auc")
+            ]
+            for m in loso
+            for t in ("default", "tuned")
+        ],
+    )
+
+    # --- Confusion matrices (pooled, repeat 0, subject-wise tuned)
+    cm = table(
+        ["Model", "TN", "FP", "FN", "TP", "Specificity", "Recall"],
+        [
+            [m]
+            + [
+                str(cv[m]["subject_tuned"]["oof_repeat0"]["pooled"][k])
+                for k in ("tn", "fp", "fn", "tp")
+            ]
+            + [
+                pct(cv[m]["subject_tuned"]["oof_repeat0"]["pooled"]["specificity"]),
+                pct(cv[m]["subject_tuned"]["oof_repeat0"]["pooled"]["recall"]),
+            ]
+            for m in cv
+        ],
+    )
+
+    # --- Chosen settings
+    chosen_rows = []
+    for m in models:
+        counts = cv[m]["subject_tuned"]["chosen_params"]
+        top = counts[0]
+        chosen_rows.append(
+            [m, _params(top["params"]), f"{top['folds']} / {n_outer}", str(len(counts))]
+        )
+    t_chosen = table(["Model", "Most often chosen", "Folds", "Distinct choices"], chosen_rows)
+
+    # --- Feature importance
+    best = ev["best_model"]
+    fi = list(ev["feature_importance"].items())[:10]
+    t_fi = table(
+        ["Rank", "Feature", "Drop in bal. acc. when shuffled (mean ± std over folds)"],
+        [
+            [str(i + 1), f"`{f}`", f"{v['mean']:+.3f} ± {v['std']:.3f}"]
+            for i, (f, v) in enumerate(fi)
+        ],
+    )
+
+    # --- Numbers for the discussion
+    svm_row = s("SVM", "row_default", "balanced_accuracy")
+    svm_sub = s("SVM", "subject_default", "balanced_accuracy")
+    svm_row_acc = s("SVM", "row_default", "accuracy")
+    svm_sub_acc = s("SVM", "subject_default", "accuracy")
+    drops = {
+        m: s(m, "row_default", "balanced_accuracy")["mean"]
+        - s(m, "subject_default", "balanced_accuracy")["mean"]
+        for m in models
+    }
+    tuning_gain = {
+        m: s(m, "subject_tuned", "balanced_accuracy")["mean"]
+        - s(m, "subject_default", "balanced_accuracy")["mean"]
+        for m in models
+    }
+    ranked = sorted(models, key=lambda m: -s(m, "subject_tuned", "balanced_accuracy")["mean"])
+    best_tuned = s(best, "subject_tuned", "balanced_accuracy")
+    runner_up = ranked[1]
+    best_gap = best_tuned["mean"] - s(runner_up, "subject_tuned", "balanced_accuracy")["mean"]
+    worst = ranked[-1]
+    spread = best_tuned["mean"] - s(worst, "subject_tuned", "balanced_accuracy")["mean"]
+    spec_range = [s(m, "subject_tuned", "specificity")["mean"] for m in models]
+    base_acc = s(BASELINE, "subject_tuned", "accuracy")
+    below_baseline = [
+        m for m in models if s(m, "subject_tuned", "accuracy")["mean"] < base_acc["mean"]
+    ]
+    paper_svm = paper["repeated_splits"]["SVM"]["accuracy"]
+    top_feature, top_imp = next(iter(ev["feature_importance"].items()))
+
+    weighted = [
+        c
+        for m in models
+        if "clf__class_weight" in ev["param_grids"].get(m, {})
+        for c in cv[m]["subject_tuned"]["chosen_params"]
+    ]
+    balanced_share = sum(
+        c["folds"] for c in weighted if c["params"].get("clf__class_weight") == "balanced"
+    ) / max(1, sum(c["folds"] for c in weighted))
+    noisy_count = sum(v["std"] >= v["mean"] for _, v in fi)
+
+    def join_and(items: list[str]) -> str:
+        if len(items) < 2:
+            return "".join(items)
+        return ", ".join(items[:-1]) + " and " + items[-1]
+
+    biggest_drops = sorted(drops, key=lambda m: -drops[m])[:3]
+    strongest_row = sorted(models, key=lambda m: -s(m, "row_default", "balanced_accuracy")["mean"])[
+        :3
+    ]
+    if set(biggest_drops) == set(strongest_row):
+        drop_sentence = (
+            f"The three largest drops are for {join_and(biggest_drops)}, which were also the three "
+            "strongest models at row level: the more flexible models gained most from recognising speakers."
+        )
+    else:
+        drop_sentence = f"The three largest drops are for {join_and(biggest_drops)}."
+
+    def pp(x: float) -> str:
+        """Percentage points."""
+        return f"{x * 100:+.1f} pp"
+
+    return f"""# Evaluation report
+
+_Generated by `research/report.py` from `research/results/*.json` — do not edit by hand.
+Regenerate with `python -m research.reproduce_paper && python -m research.evaluate && python -m research.report`._
+
+All runs: scikit-learn {c['scikit_learn']}; every model is `StandardScaler → classifier`
+in one Pipeline, so scaling is fitted on training data only. Parkinson's is the positive
+class (recall = sensitivity; specificity = healthy recordings correctly identified).
+Each evaluation run is also logged to MLflow (local `mlflow.db`).
+
+## 1. Dataset
+
+- **{d['n_recordings']} recordings**: {d['n_parkinsons']} Parkinson's ({d['n_parkinsons'] / d['n_recordings']:.1%}), {d['n_healthy']} healthy.
+- **{d['n_subject_ids']} subject IDs** parsed from the `name` column: {d['n_parkinsons_subjects']} Parkinson's, {d['n_healthy_subjects']} healthy, with 6–7 recordings each.
+- The dataset description says 31 people (23 with Parkinson's), but the file encodes {d['n_subject_ids']} distinct IDs. Subject-wise splits group on the IDs as they appear. If two IDs are in fact one person, a small amount of leakage remains, far less than in a row-level split.
+- SHA-256 of the file: `{d['sha256']}`.
+
+## 2. Majority-class baseline
+
+Always predicting "Parkinson's" scores **{mean_std(base_acc)} accuracy** under subject-wise CV, with
+50% balanced accuracy, 100% recall and 0% specificity. Any accuracy figure on this dataset
+has to be read against that baseline, which is why balanced accuracy is the headline metric below.
+
+## 3. Table 1 — paper reproduction (row-level)
+
+The paper reports 87.18% SVM accuracy from one 80/20 row-level split (34 of 39 test recordings).
+Over 200 random 80/20 splits the same SVM setup scores {mean_std(paper_svm)}, so the paper's figure is
+typical for that protocol. Full tables: [`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
+
+{t1}
+
+## 4. Table 2 — subject-wise evaluation
+
+Outer CV: `StratifiedGroupKFold`, {c['n_splits']} folds × {c['n_repeats']} repeats = {n_outer} test folds per model; no subject is ever in both
+the training and test side of a fold. With {d['n_healthy_subjects']} healthy subjects, each test fold holds only 1–2 of them, hence
+the repeats. **Tuned** = settings chosen by an inner {c['inner_splits']}-fold subject-wise grid search on each outer training set,
+scored by {c['tuning_metric'].replace('_', ' ')}; the outer test fold is never seen during tuning. Mean ± std over the {n_outer} outer folds.
+
+### Table 2a — subject-wise, tuned: all metrics
+
+{t2}
+
+### Table 2b — row-level vs subject-wise, on the same models
+
+Same outer fold scheme for all three columns, so the first gap is the leakage effect and the second
+is what tuning adds. Mean ± std over {n_outer} outer folds.
+
+![Balanced accuracy by protocol](figures/protocol_comparison.png)
+
+**Balanced accuracy**
+
+{t2b_bal}
+
+**Accuracy**
+
+{t2b_acc}
+
+### Table 2c — leave-one-subject-out (cross-check)
+
+Each test fold is one subject, so it holds a single class; metrics are computed once on the
+predictions pooled over all {d['n_subject_ids']} subjects.
+
+{t2c}
+
+### Settings chosen by the inner search
+
+{t_chosen}
+
+Full grids and per-fold choices are in `research/results/evaluation.json` and MLflow.
+
+## 5. Table 3 — full-feature vs audio-reproducible-feature model
+
+_Added in M3, once the Parselmouth feature extraction defines which features can be reproduced from raw audio._
+
+## 6. Confusion matrices and ROC curves
+
+Subject-wise, tuned. Out-of-fold predictions from the first repeat, so each recording is predicted exactly
+once by a model that never saw that subject.
+
+{cm}
+
+![ROC curves, subject-wise tuned](figures/roc_subject_tuned.png)
+
+ROC curves pool decision scores from five fold models, which assumes their scales are comparable.
+
+## 7. Top features
+
+Permutation importance for **{best}** (highest mean subject-wise tuned balanced accuracy), measured on
+held-out subjects only: each feature is shuffled in the test fold and the drop in balanced accuracy is recorded.
+
+Read this table with care. The largest drop is only {top_imp['mean']:.3f} (`{top_feature}`), and {noisy_count} of the top
+{len(fi)} features have a standard deviation at least as large as their mean, so no single feature is reliably important. Two reasons: correlated features share credit
+(shuffling one jitter variant barely matters while the others are intact), and each test fold holds only 1–2 healthy
+subjects, so the score moves in coarse steps.
+
+{t_fi}
+
+## 8. Discussion
+
+**Why row-level and subject-wise results differ.** Each person contributes about six recordings of the same
+vowel. In a row-level split, the model usually has other recordings of every test speaker in its training set,
+so it can succeed by recognising the *voice* rather than the disease. Removing that shortcut lowers SVM's
+accuracy from {mean_std(svm_row_acc)} to {mean_std(svm_sub_acc)} and its balanced accuracy from {mean_std(svm_row)} to
+{mean_std(svm_sub)} (default settings, same folds). Across models, balanced accuracy falls by between
+{pp(min(drops.values())).lstrip('+')} and {pp(max(drops.values())).lstrip('+')}. {drop_sentence}
+
+**Tuning did not rescue performance.** Nested subject-wise tuning changed balanced accuracy by between
+{pp(min(tuning_gain.values()))} and {pp(max(tuning_gain.values()))} compared with default settings, well inside the fold-to-fold
+spread. Tuning for balanced accuracy chose `class_weight=balanced` in {balanced_share:.0%} of folds for the models that offer it, which trades Parkinson's recall for
+healthy-group specificity; as a result {join_and(below_baseline) or 'no model'} {'scores' if len(below_baseline) == 1 else 'score'}
+*below* the majority baseline's {pct(base_acc['mean'])} on plain accuracy, even though {'its' if len(below_baseline) == 1 else 'their'}
+balanced accuracy is above chance.
+
+**No model is clearly best.** {best} has the highest mean balanced accuracy ({mean_std(best_tuned)}), but it leads
+{runner_up} by only {pp(best_gap).lstrip('+')} and the worst model by {pp(spread).lstrip('+')}, while the fold-to-fold standard
+deviation is about {best_tuned['std']:.0%}. Mean specificity ranges from {pct(min(spec_range))} to {pct(max(spec_range))}:
+recognising healthy voices is the weak point for every model, because there are only {d['n_healthy_subjects']} healthy people to learn from.
+
+**What this means for the paper's 87.18%.** The figure is a faithful result of its protocol, but it measures
+performance on *new recordings of people already seen in training*. The relevant question for a voice-screening tool is
+performance on *new people*, which is what the subject-wise numbers estimate. Those numbers also come with wide
+fold-to-fold spread, because the whole dataset holds {d['n_subject_ids']} subject IDs. They are an estimate for this dataset's
+recording conditions only; they say nothing about recordings made on other microphones (see M3).
+"""
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point."""
+    parser = argparse.ArgumentParser(description="Generate docs/evaluation.md.")
+    parser.add_argument("--paper", type=Path, default=RESULTS_DIR / "paper_reproduction.json")
+    parser.add_argument("--evaluation", type=Path, default=RESULTS_DIR / "evaluation.json")
+    parser.add_argument("--docs-dir", type=Path, default=DOCS_DIR)
+    args = parser.parse_args(argv)
+
+    paper = json.loads(args.paper.read_text())
+    ev = json.loads(args.evaluation.read_text())
+    fig_dir = args.docs_dir / "figures"
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    plot_protocols(ev, fig_dir / "protocol_comparison.png")
+    plot_roc(ev, fig_dir / "roc_subject_tuned.png")
+    (args.docs_dir / "evaluation.md").write_text(build_report(paper, ev))
+    print(f"Wrote {args.docs_dir / 'evaluation.md'}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
