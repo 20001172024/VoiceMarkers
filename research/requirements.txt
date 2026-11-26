@@ -1,0 +1,6 @@
+# Research dependencies (research/ scripts and their tests).
+# scikit-learn is pinned exactly: the model artifact saved in M3 must be loaded
+# by the backend with the same version that trained it.
+scikit-learn==1.9.1
+pandas>=2.2,<4.0
+numpy>=2.0,<3.0

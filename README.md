@@ -18,7 +18,7 @@ subject-wise cross-validation and reports both sets of numbers side by side.
 🚧 Work in progress. Built milestone by milestone (see [`CLAUDE.md`](CLAUDE.md)):
 
 - [x] **M0** — repo skeleton, `/health` API, dataset download, lint + CI
-- [ ] **M1** — reproduce the paper's row-level results
+- [x] **M1** — reproduce the paper's row-level results ([report](research/results/paper_reproduction.md))
 - [ ] **M2** — subject-wise re-evaluation and evaluation report
 - [ ] **M3** — Parselmouth feature extraction and the deployed model
 - [ ] **M4** — prediction API
@@ -32,9 +32,10 @@ Requires Python 3.11 and Node 22.
 
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e "backend[dev]"
+pip install -e "backend[dev]" -r research/requirements.txt
 python -m data.download          # fetches and verifies the UCI dataset
-pytest                           # backend + script tests
+pytest                           # backend + research + script tests
+python -m research.reproduce_paper   # row-level paper reproduction (~1 min)
 cd backend && uvicorn app.main:app --reload   # http://localhost:8000/health
 ```
 
