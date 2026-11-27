@@ -136,12 +136,8 @@ jobs:
             --cors-origins "$FRONTEND_URL"
       - name: Wait until the new build is live
         if: steps.check.outputs.enabled == 'true'
+        # The Space rebuilds its image after each upload (several minutes). Fails fast,
+        # with Hugging Face's message, if the build errors or the Space stays paused.
         run: |
-          # The Space rebuilds the image after each upload (several minutes).
-          for i in $(seq 1 90); do
-            if curl -fsS "$API_BASE_URL/health" | grep -q "\"build\":\"$GITHUB_SHA\""; then
-              curl -fsS "$API_BASE_URL/health"; exit 0
-            fi
-            sleep 20
-          done
-          echo "The Space did not serve build $GITHUB_SHA within 30 minutes"; exit 1
+          python -m deploy.wait_for_space --repo-id "$HF_SPACE" --api-url "$API_BASE_URL" \
+            --build-sha "$GITHUB_SHA" --timeout-minutes 30
