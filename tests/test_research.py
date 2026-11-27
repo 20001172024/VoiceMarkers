@@ -104,7 +104,18 @@ def test_paper_accuracy_is_34_of_39() -> None:
 def test_main_writes_json_and_markdown(synthetic_csv: Path, tmp_path: Path) -> None:
     out = tmp_path / "results"
     rc = rp.main(
-        ["--data", str(synthetic_csv), "--out-dir", str(out), "--n-repeats", "3", "--n-folds", "3"]
+        [
+            "--data",
+            str(synthetic_csv),
+            "--out-dir",
+            str(out),
+            "--n-repeats",
+            "3",
+            "--n-folds",
+            "3",
+            "--n-tuned-repeats",
+            "2",
+        ]
     )
     assert rc == 0
     results = json.loads((out / "paper_reproduction.json").read_text())
@@ -114,3 +125,28 @@ def test_main_writes_json_and_markdown(synthetic_csv: Path, tmp_path: Path) -> N
     assert "row-level" in report
     for name in MODEL_NAMES:
         assert name in report
+
+
+def test_single_split_is_stratified_and_reports_train_accuracy(synthetic_csv: Path) -> None:
+    ds = load_dataset(synthetic_csv)  # 42 of 60 recordings are "Parkinson's"
+    for seed in range(5):
+        m = rp.single_split(ds, "SVM", seed)
+        assert m["fn"] + m["tp"] == round(0.2 * 42)  # class ratio kept in the test set
+        assert 0.0 <= m["train_accuracy"] <= 1.0
+
+
+def test_paper_protocol_compares_default_and_tuned_svm(synthetic_csv: Path) -> None:
+    ds = load_dataset(synthetic_csv)
+    default_runs = rp.repeated_splits(ds, "SVM", range(3))
+    pp = rp.paper_protocol(ds, default_runs, n_tuned=2)
+    assert pp["reported"] == {"train_accuracy": 138 / 156, "accuracy": 34 / 39}
+    assert pp["default"]["n_splits"] == 3 and pp["tuned"]["n_splits"] == 2
+    for key in ("default", "tuned"):
+        assert {"train_accuracy", "accuracy", "n_both_equal_to_paper"} <= set(pp[key])
+
+
+def test_report_includes_the_paper_protocol_section(synthetic_csv: Path) -> None:
+    results = rp.run(load_dataset(synthetic_csv), n_repeats=2, n_folds=3, n_tuned_repeats=2)
+    md = rp.to_markdown(results)
+    assert "## Matching the paper's protocol" in md
+    assert "88.46%" in md and "87.18%" in md

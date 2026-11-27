@@ -166,7 +166,7 @@ def test_report_includes_table_3_and_deployed_model(
 
     # The report's discussion is written about SVM, so the full-feature run includes it.
     full = ev.run(load_dataset(synthetic_csv), models=(*MODELS, "SVM"), **SMALL)
-    paper = rp.run(load_dataset(synthetic_csv), n_repeats=2, n_folds=3)
+    paper = rp.run(load_dataset(synthetic_csv), n_repeats=2, n_folds=3, n_tuned_repeats=2)
     meta = {
         "model_type": "Logistic Regression",
         "model_version": "1.0.0",

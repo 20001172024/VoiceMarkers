@@ -155,7 +155,7 @@ def test_main_writes_json_and_logs_to_mlflow(
 def test_report_writes_every_section_and_figures(
     small_results: dict[str, Any], synthetic_csv: Path, tmp_path: Path
 ) -> None:
-    paper = rp.run(load_dataset(synthetic_csv), n_repeats=2, n_folds=3)
+    paper = rp.run(load_dataset(synthetic_csv), n_repeats=2, n_folds=3, n_tuned_repeats=2)
     (tmp_path / "paper.json").write_text(json.dumps(paper))
     (tmp_path / "evaluation.json").write_text(json.dumps(small_results, default=float))
     docs = tmp_path / "docs"
