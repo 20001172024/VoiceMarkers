@@ -177,10 +177,24 @@ def table3(ev: dict[str, Any], ev_repro: dict[str, Any] | None, meta: dict[str, 
                 mean_std(repro["roc_auc"]),
             ]
         )
+    # The paper's XGBoost feature importance (Section IV) ranked these highest.
+    paper_top = ["spread1", "PPE", "RPDE", "DFA"]
+    lost = [f for f in paper_top if f in dropped]
+    paper_note = (
+        f"The paper's XGBoost feature importance ranked {', '.join(f'`{f}`' for f in paper_top)} "
+        + (
+            "highest; none of them can be computed from a new recording,"
+            if len(lost) == len(paper_top)
+            else f"highest; {len(lost)} of them cannot be computed from a new recording,"
+        )
+        + " which helps explain why models lose accuracy on the reproducible features."
+    )
     out = f"""The deployed model may only use features that can be computed from a new recording. Praat reproduces
 {len(kept)} of the {len(FEATURE_COLUMNS)} UCI features (pitch, jitter, shimmer, HNR); the other {len(dropped)}
 ({", ".join(f"`{f}`" for f in dropped)}) are dropped. See `backend/app/audio/features.py`
 for why, and [`research/results/feature_validation.md`](../research/results/feature_validation.md) for the range checks.
+
+{paper_note}
 
 Both columns use the same nested subject-wise CV (Section 4).
 
@@ -226,8 +240,24 @@ def build_report(
 
     # --- Table 1: paper reproduction (from M1 output)
     pr = paper["repeated_splits"]
+    pr_n = paper["config"]["n_repeats"]
+    pp = paper.get("paper_protocol")
+    pp_sentence = (
+        f"The paper also reports {pp['reported']['train_accuracy']:.2%} training accuracy; "
+        f"the default SVM averages {mean_std(pp['default']['train_accuracy'])}, while the grid search "
+        f"the paper describes gives {mean_std(pp['tuned']['train_accuracy'])} training and "
+        f"{mean_std(pp['tuned']['accuracy'])} test accuracy, so the reported figures match an untuned SVM."
+        if pp
+        else ""
+    )
     t1 = table(
-        ["Model", "Accuracy, 200 random 80/20 splits", "5th–95th pct", "Bal. acc.", "ROC-AUC"],
+        [
+            "Model",
+            f"Accuracy, {pr_n} stratified 80/20 splits",
+            "5th–95th pct",
+            "Bal. acc.",
+            "ROC-AUC",
+        ],
         [
             [
                 m,
@@ -402,9 +432,10 @@ has to be read against that baseline, which is why balanced accuracy is the head
 
 ## 3. Table 1 — paper reproduction (row-level)
 
-The paper reports 87.18% SVM accuracy from one 80/20 row-level split (34 of 39 test recordings).
-Over 200 random 80/20 splits the same SVM setup scores {mean_std(paper_svm)}, so the paper's figure is
-typical for that protocol. Full tables: [`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
+The paper reports 87.18% SVM test accuracy from one stratified 80/20 row-level split (34 of 39 test
+recordings). Over {pr_n} random stratified 80/20 splits an SVM with default settings scores {mean_std(paper_svm)},
+so the paper's figure is typical for that protocol. {pp_sentence} Full tables:
+[`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
 
 {t1}
 
@@ -582,12 +613,12 @@ def readme_table(paper: dict[str, Any], ev: dict[str, Any], meta: dict[str, Any]
     base = ev["cv"][BASELINE]["subject_tuned"]["summary"]
     rows = [
         [
-            "Paper: SVM, one random 80/20 split (row-level)",
+            "Paper: SVM, one stratified 80/20 split (row-level)",
             f"{paper['config']['paper_svm_accuracy']:.2%}",
             "not reported",
         ],
         [
-            "SVM, same setup over 200 random splits (row-level)",
+            f"SVM, same setup over {paper['config']['n_repeats']} stratified splits (row-level)",
             mean_std(paper["repeated_splits"]["SVM"]["accuracy"]),
             mean_std(paper["repeated_splits"]["SVM"]["balanced_accuracy"]),
         ],
