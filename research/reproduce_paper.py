@@ -1,23 +1,26 @@
 """Reproduce the paper's row-level results (M1).
 
-The paper (Arora et al., ICOIICS 2025, Section III) describes its protocol as: z-score
-scaling, a stratified 80/20 train/test split, and an RBF SVM whose C and gamma
-were tuned by grid search with 5-fold cross-validation. It reports 88.46% training
-and 87.18% test accuracy (138/156 and 34/39 recordings). The original notebook
-(and so its random seed and grid) is not available, so this script reports:
+The paper (Arora et al., ICOIICS 2025) reports 88.46% training and 87.18% test
+accuracy for an SVM (138/156 and 34/39 recordings). Its original notebook,
+`research/original/Parkinsons.ipynb`, shows exactly how those numbers were made:
 
-1. A single stratified 80/20 split with a seed fixed in advance (42).
-2. The same split repeated over many seeds, to show how much a single-split
-   accuracy depends on which rows happen to land in the test set.
-3. Stratified 10-fold row-level cross-validation, a steadier summary.
-4. The paper's protocol for the SVM in two variants, default settings and the
-   described grid search, compared with the reported training and test accuracy.
+- an unstratified 80/20 split, `train_test_split(..., test_size=0.2, random_state=2)`;
+- `StandardScaler` fitted on the training rows only;
+- `SVC(kernel="linear")` with default C=1 and no hyperparameter search.
 
-One deliberate difference: the paper fitted the scaler on all 195 recordings
-before splitting; here scaling sits inside the Pipeline, fitted on training rows.
+This script reports, all at row level:
 
-All three are ROW-LEVEL: recordings of the same person can be in both train and
-test. That inflates accuracy; the subject-wise evaluation comes in M2.
+1. An exact reproduction of the notebook (same split, scaler and model).
+2. The notebook's linear SVM over many random splits, to show how much a
+   single-split accuracy depends on which rows land in the test set.
+3. The protocol the paper's *text* describes (Section III: stratified split, RBF
+   SVM with C and gamma tuned by 5-fold grid search), with default and tuned
+   settings, compared with the reported numbers.
+4. The model comparison (Tables 1a-1c): every model on the notebook's split, over
+   many splits, and with stratified 10-fold CV.
+
+ROW-LEVEL means recordings of the same person can be in both train and test.
+That inflates accuracy; the subject-wise evaluation comes in M2.
 
 Usage (from the repo root, after `python -m data.download`):
     python -m research.reproduce_paper
@@ -35,6 +38,9 @@ import numpy as np
 import pandas as pd
 import sklearn
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 from data.download import DEFAULT_DEST
 from research.dataset import Dataset, load_dataset
@@ -43,35 +49,69 @@ from research.models import MODEL_NAMES, build_model
 
 PAPER_SVM_ACCURACY = 34 / 39  # 87.18% test accuracy, as reported in the paper
 PAPER_SVM_TRAIN_ACCURACY = 138 / 156  # 88.46% training accuracy, as reported
-# The paper tunes C and gamma by grid search but does not list the grid; this is a
-# conventional one, fixed before running.
+NOTEBOOK_SEED = 2  # random_state of the notebook's train_test_split (cell 21)
+TEST_SIZE = 0.2
+# The paper's text tunes C and gamma by grid search but does not list the grid;
+# this is a conventional one, fixed before running.
 PAPER_SVM_GRID = {"clf__C": [0.1, 1, 10, 100], "clf__gamma": ["scale", 0.01, 0.1, 1]}
 N_TUNED_REPEATS = 100
-TEST_SIZE = 0.2
-SINGLE_SPLIT_SEED = 42  # chosen before looking at results; not searched for
 N_REPEATS = 200
 N_FOLDS = 10
 DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "results"
 
 
-def _split(ds: Dataset, seed: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Stratified 80/20 row-level split, as in the paper."""
-    return train_test_split(ds.X, ds.y, test_size=TEST_SIZE, stratify=ds.y, random_state=seed)
+def _split(
+    ds: Dataset, seed: int, stratify: bool = False
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """80/20 row-level split; unstratified like the notebook unless `stratify`."""
+    return train_test_split(
+        ds.X, ds.y, test_size=TEST_SIZE, random_state=seed, stratify=ds.y if stratify else None
+    )
+
+
+def notebook_svm() -> Pipeline:
+    """The notebook's model: scaler fitted on training rows, then a linear SVM (C=1)."""
+    return Pipeline([("scale", StandardScaler()), ("clf", SVC(kernel="linear"))])
+
+
+def _fit_and_score(model: Pipeline, split: tuple) -> dict[str, float]:
+    X_tr, X_te, y_tr, y_te = split
+    model.fit(X_tr, y_tr)
+    return {**evaluate_fitted(model, X_te, y_te), "train_accuracy": float(model.score(X_tr, y_tr))}
 
 
 def single_split(ds: Dataset, model_name: str, seed: int) -> dict[str, float]:
-    """Fit on a stratified 80/20 row-level split; score on the 20% (and on the 80%)."""
-    X_tr, X_te, y_tr, y_te = _split(ds, seed)
-    model = build_model(model_name, random_state=seed).fit(X_tr, y_tr)
+    """Fit one model on an unstratified 80/20 split; score on the 20% (and the 80%)."""
+    return _fit_and_score(build_model(model_name, random_state=seed), _split(ds, seed))
+
+
+def repeated_splits(ds: Dataset, model_name: str, seeds: Iterable[int]) -> pd.DataFrame:
+    """Run `single_split` once per seed; one row of metrics per seed."""
+    return pd.DataFrame([single_split(ds, model_name, s) for s in seeds])
+
+
+def notebook_reproduction(ds: Dataset, n_repeats: int) -> dict:
+    """The notebook's exact run, plus its linear SVM over `n_repeats` random splits."""
+    exact = _fit_and_score(notebook_svm(), _split(ds, NOTEBOOK_SEED))
+    runs = pd.DataFrame([_fit_and_score(notebook_svm(), _split(ds, s)) for s in range(n_repeats)])
     return {
-        **evaluate_fitted(model, X_te, y_te),
-        "train_accuracy": float(model.score(X_tr, y_tr)),
+        "seed": NOTEBOOK_SEED,
+        "exact": exact,
+        "matches_paper": bool(
+            np.isclose(exact["accuracy"], PAPER_SVM_ACCURACY)
+            and np.isclose(exact["train_accuracy"], PAPER_SVM_TRAIN_ACCURACY)
+        ),
+        "over_splits": {
+            "n_splits": n_repeats,
+            "train_accuracy": _summary(runs["train_accuracy"]),
+            **{m: _summary(runs[m]) for m in SCALAR_METRICS},
+        },
     }
 
 
 def tuned_svm_split(ds: Dataset, seed: int) -> dict[str, float]:
-    """The paper's tuned variant: grid search over C and gamma with 5-fold CV on the 80%."""
-    X_tr, X_te, y_tr, y_te = _split(ds, seed)
+    """The paper text's tuned variant: stratified split, grid search with 5-fold CV."""
+    X_tr, X_te, y_tr, y_te = _split(ds, seed, stratify=True)
     search = GridSearchCV(
         build_model("SVM", random_state=seed),
         PAPER_SVM_GRID,
@@ -84,32 +124,28 @@ def tuned_svm_split(ds: Dataset, seed: int) -> dict[str, float]:
     }
 
 
-def paper_protocol(ds: Dataset, default_runs: pd.DataFrame, n_tuned: int) -> dict:
-    """Compare default and tuned SVMs with the paper's reported train/test accuracy."""
+def described_protocol(ds: Dataset, n_default: int, n_tuned: int) -> dict:
+    """The protocol in the paper's text: stratified split, RBF SVM, default vs tuned."""
+    default = pd.DataFrame(
+        [
+            _fit_and_score(build_model("SVM", random_state=s), _split(ds, s, stratify=True))
+            for s in range(n_default)
+        ]
+    )
     tuned = pd.DataFrame([tuned_svm_split(ds, s) for s in range(n_tuned)])
 
     def describe(runs: pd.DataFrame) -> dict:
-        test_match = np.isclose(runs["accuracy"], PAPER_SVM_ACCURACY)
-        train_match = np.isclose(runs["train_accuracy"], PAPER_SVM_TRAIN_ACCURACY)
         return {
             "n_splits": len(runs),
             "train_accuracy": _summary(runs["train_accuracy"]),
             "accuracy": _summary(runs["accuracy"]),
-            "n_test_equal_to_paper": int(test_match.sum()),
-            "n_both_equal_to_paper": int((test_match & train_match).sum()),
         }
 
     return {
-        "reported": {"train_accuracy": PAPER_SVM_TRAIN_ACCURACY, "accuracy": PAPER_SVM_ACCURACY},
         "grid": {k.removeprefix("clf__"): v for k, v in PAPER_SVM_GRID.items()},
-        "default": describe(default_runs),
-        "tuned": describe(tuned),
+        "rbf_default": describe(default),
+        "rbf_tuned": describe(tuned),
     }
-
-
-def repeated_splits(ds: Dataset, model_name: str, seeds: Iterable[int]) -> pd.DataFrame:
-    """Run `single_split` once per seed; one row of metrics per seed."""
-    return pd.DataFrame([single_split(ds, model_name, s) for s in seeds])
 
 
 def row_level_cv(ds: Dataset, model_name: str, n_folds: int = N_FOLDS) -> pd.DataFrame:
@@ -142,7 +178,7 @@ def run(
     n_folds: int = N_FOLDS,
     n_tuned_repeats: int = N_TUNED_REPEATS,
 ) -> dict:
-    """Run every protocol for every model and return JSON-serialisable results."""
+    """Run every protocol and return JSON-serialisable results."""
     results: dict = {
         "dataset": {
             "sha256": ds.sha256,
@@ -154,31 +190,28 @@ def run(
         "config": {
             "scikit_learn": sklearn.__version__,
             "test_size": TEST_SIZE,
-            "single_split_seed": SINGLE_SPLIT_SEED,
+            "single_split_seed": NOTEBOOK_SEED,
             "n_repeats": n_repeats,
             "n_folds": n_folds,
             "n_tuned_repeats": n_tuned_repeats,
-            "stratified": True,
             "paper_svm_accuracy": PAPER_SVM_ACCURACY,
+            "paper_svm_train_accuracy": PAPER_SVM_TRAIN_ACCURACY,
         },
+        "notebook": notebook_reproduction(ds, n_repeats),
+        "described_protocol": described_protocol(ds, n_repeats, n_tuned_repeats),
         "single_split": {},
         "repeated_splits": {},
         "row_level_cv": {},
     }
     for name in MODEL_NAMES:
-        results["single_split"][name] = single_split(ds, name, SINGLE_SPLIT_SEED)
-
+        results["single_split"][name] = single_split(ds, name, NOTEBOOK_SEED)
         reps = repeated_splits(ds, name, range(n_repeats))
         results["repeated_splits"][name] = {
             **{m: _summary(reps[m]) for m in SCALAR_METRICS},
-            "share_equal_to_paper": float(np.isclose(reps["accuracy"], PAPER_SVM_ACCURACY).mean()),
             "share_at_least_paper": float((reps["accuracy"] >= PAPER_SVM_ACCURACY - 1e-9).mean()),
         }
-
         folds = row_level_cv(ds, name, n_folds)
         results["row_level_cv"][name] = {m: _summary(folds[m]) for m in SCALAR_METRICS}
-        if name == "SVM":
-            results["paper_protocol"] = paper_protocol(ds, reps, n_tuned_repeats)
     return results
 
 
@@ -201,53 +234,76 @@ def _table(header: list[str], rows: list[list[str]]) -> str:
 def to_markdown(results: dict) -> str:
     """Render the results dict as the Markdown report."""
     d, c = results["dataset"], results["config"]
-    svm_rep = results["repeated_splits"]["SVM"]["accuracy"]
-    svm_eq = results["repeated_splits"]["SVM"]["share_equal_to_paper"]
-    svm_ge = results["repeated_splits"]["SVM"]["share_at_least_paper"]
+    nb, dp = results["notebook"], results["described_protocol"]
+    ex, over = nb["exact"], nb["over_splits"]
+    rep_train, rep_test = c["paper_svm_train_accuracy"], c["paper_svm_accuracy"]
     base = results["single_split"]["Majority baseline"]["accuracy"]
     cv = {k: v for k, v in results["row_level_cv"].items() if k != "Majority baseline"}
     best = max(cv, key=lambda k: cv[k]["accuracy"]["mean"])
-    svm_cv = results["row_level_cv"]["SVM"]
-    pp = results["paper_protocol"]
-    rep_train, rep_test = pp["reported"]["train_accuracy"], pp["reported"]["accuracy"]
 
-    def distance(v: dict) -> float:
-        return abs(v["train_accuracy"]["mean"] - rep_train) + abs(v["accuracy"]["mean"] - rep_test)
-
-    closer = "default" if distance(pp["default"]) <= distance(pp["tuned"]) else "tuned"
-    pp_rows = [["Paper (Table I)", _pct(rep_train), _pct(rep_test), "–", "–"]]
-    for key, label in (
-        ("default", "SVM, default settings"),
-        ("tuned", "SVM, grid search (as described)"),
-    ):
-        v = pp[key]
-        pp_rows.append(
-            [
-                f"{label}, {v['n_splits']} splits",
-                _mean_std(v["train_accuracy"]),
-                _mean_std(v["accuracy"]),
-                f"{v['n_test_equal_to_paper']} / {v['n_splits']}",
-                f"{v['n_both_equal_to_paper']} / {v['n_splits']}",
-            ]
-        )
-    grid = ", ".join(f"`{k}` ∈ {v}" for k, v in pp["grid"].items())
-    closer_text = (
-        "The reported pair is consistent with an SVM with **default settings**: its average "
-        "training and test accuracy are close to the paper's, and some splits reproduce both "
-        "numbers exactly. With the grid search the paper describes, the same protocol fits the "
-        "training data almost perfectly and scores higher on the test set, so the reported "
-        "figures most likely come from an untuned model."
-        if closer == "default"
-        else "The reported pair is closer to the tuned SVM than to the default one."
+    exact_table = _table(
+        ["", "Training accuracy", "Test accuracy"],
+        [
+            ["Paper (Table I) and notebook output", _pct(rep_train), _pct(rep_test)],
+            ["This reproduction", _pct(ex["train_accuracy"]), _pct(ex["accuracy"])],
+        ],
     )
+    exact_metrics = _table(
+        ["Bal. acc.", "Precision", "Recall", "Specificity", "F1", "ROC-AUC", "TN / FP / FN / TP"],
+        [
+            [
+                _pct(ex[k])
+                for k in (
+                    "balanced_accuracy",
+                    "precision",
+                    "recall",
+                    "specificity",
+                    "f1",
+                    "roc_auc",
+                )
+            ]
+            + [f"{ex['tn']} / {ex['fp']} / {ex['fn']} / {ex['tp']}"]
+        ],
+    )
+    match_text = (
+        "**The reproduction matches the paper exactly.**"
+        if nb["matches_paper"]
+        else "**The reproduction does not match the paper** — see the numbers above."
+    )
+    described_rows = [
+        [
+            "Paper (Table I) / notebook",
+            "linear SVM, unstratified, seed 2",
+            _pct(rep_train),
+            _pct(rep_test),
+        ],
+        [
+            f"Notebook's model over {over['n_splits']} splits",
+            "linear SVM, unstratified",
+            _mean_std(over["train_accuracy"]),
+            _mean_std(over["accuracy"]),
+        ],
+        [
+            f"Described, default settings ({dp['rbf_default']['n_splits']} splits)",
+            "RBF SVM, stratified",
+            _mean_std(dp["rbf_default"]["train_accuracy"]),
+            _mean_std(dp["rbf_default"]["accuracy"]),
+        ],
+        [
+            f"Described, grid search ({dp['rbf_tuned']['n_splits']} splits)",
+            "RBF SVM, stratified, tuned C and gamma",
+            _mean_std(dp["rbf_tuned"]["train_accuracy"]),
+            _mean_std(dp["rbf_tuned"]["accuracy"]),
+        ],
+    ]
+    grid = ", ".join(f"`{k}` ∈ {v}" for k, v in dp["grid"].items())
 
-    single_rows = []
-    for name, m in results["single_split"].items():
-        single_rows.append(
-            [name]
-            + [_pct(m[k]) for k in SCALAR_METRICS]
-            + [f"{m['tn']} / {m['fp']} / {m['fn']} / {m['tp']}"]
-        )
+    single_rows = [
+        [name]
+        + [_pct(m[k]) for k in SCALAR_METRICS]
+        + [f"{m['tn']} / {m['fp']} / {m['fn']} / {m['tp']}"]
+        for name, m in results["single_split"].items()
+    ]
     rep_rows = []
     for name, r in results["repeated_splits"].items():
         a = r["accuracy"]
@@ -273,36 +329,50 @@ def to_markdown(results: dict) -> str:
 _Generated by `research/reproduce_paper.py` — do not edit by hand._
 
 - Dataset: {d['n_recordings']} recordings ({d['n_parkinsons']} Parkinson's, {d['n_healthy']} healthy), {d['n_subject_ids']} subject IDs. SHA-256 `{d['sha256'][:12]}…`
-- scikit-learn {c['scikit_learn']}. Every model is `StandardScaler → classifier` in one Pipeline, with scikit-learn default settings (Logistic Regression: `max_iter` raised so it converges).
-- Positive class = Parkinson's, so recall is sensitivity.
+- scikit-learn {c['scikit_learn']}. Positive class = Parkinson's, so recall is sensitivity.
+- Original notebook: [`research/original/Parkinsons.ipynb`](../original/Parkinsons.ipynb).
 
 > **All results on this page are row-level:** recordings of the same person can appear in both the training and the test set, which inflates scores. Subject-wise results are reported separately (M2).
 
-## Summary
+## 1. Exact reproduction of the original notebook
 
-The paper reports **{_pct(c['paper_svm_accuracy'])}** SVM test accuracy (34 of 39 test recordings correct) from one stratified 80/20 split. The original notebook and its random seed are not available, so the exact split cannot be recovered. Over {c['n_repeats']} random stratified 80/20 splits, the same SVM setup scores **{_mean_std(svm_rep)}** (5th–95th percentile {_pct(svm_rep['p5'])} – {_pct(svm_rep['p95'])}); {_pct(svm_eq)} of splits give exactly {_pct(c['paper_svm_accuracy'])} and {_pct(svm_ge)} give at least that. The paper's figure is therefore consistent with this setup, but a single split cannot pin a model's accuracy down to better than several percentage points. Always predicting "Parkinson's" scores {_pct(base)} on the seed-{c['single_split_seed']} test split.
+The notebook splits 80/20 without stratification (`random_state={nb['seed']}`), fits `StandardScaler` on the training rows, and trains `SVC(kernel='linear')` with the default `C=1` (cells 21–38).
 
-With default settings, the best model by {c['n_folds']}-fold row-level CV accuracy is **{best}** ({_mean_std(cv[best]['accuracy'])}), against SVM's {_mean_std(svm_cv['accuracy'])}. SVM's high accuracy hides weak performance on the healthy group: its specificity is {_mean_std(svm_cv['specificity'])} and its balanced accuracy {_mean_std(svm_cv['balanced_accuracy'])}, because about 75% of recordings are Parkinson's.
+{exact_table}
 
-## Matching the paper's protocol
+{match_text} The notebook computes accuracy only; the precision, recall and F1 in the paper's Table I, and its rows for the other models, are not in it, so they cannot be traced to code. The same model on that test split:
 
-The paper (Section III) scales the features, makes a stratified 80/20 split, and tunes an RBF SVM's C and gamma by grid search with 5-fold cross-validation; it reports **{_pct(rep_train)} training** and **{_pct(rep_test)} test** accuracy. The grid itself is not given; the one used here was fixed before running: {grid}.
+{exact_metrics}
 
-{_table(["Setup", "Training accuracy", "Test accuracy", "Splits with test = paper", "Splits with both = paper"], pp_rows)}
+On this split the model recognises {_pct(ex['specificity'])} of healthy recordings, and always predicting "Parkinson's" would already score {_pct(base)}.
 
-{closer_text} Choosing one of the matching splits and calling it "the paper's split" would be selecting a seed after seeing the results, so this report does not do that.
+## 2. How much one split can vary
 
-## Table 1a — single 80/20 split (seed {c['single_split_seed']}, chosen in advance)
+Over {over['n_splits']} random unstratified 80/20 splits the notebook's linear SVM scores **{_mean_std(over['accuracy'])}** test accuracy (5th–95th percentile {_pct(over['accuracy']['p5'])} – {_pct(over['accuracy']['p95'])}) and {_mean_std(over['balanced_accuracy'])} balanced accuracy. The paper's {_pct(rep_test)} is a typical draw from this range; a single split cannot pin accuracy down to better than several percentage points.
+
+## 3. The protocol described in the paper's text
+
+The paper's Section III describes a stratified split and an RBF-kernel SVM whose C and gamma were tuned by grid search with 5-fold cross-validation. The notebook instead used a linear kernel with default settings and an unstratified split. For comparison, the described protocol was run as written; the grid was not published, so a conventional one was fixed before running ({grid}).
+
+{_table(["Setup", "Model", "Training accuracy", "Test accuracy"], described_rows)}
+
+The reported figures come from the notebook's linear SVM. Run as described, the tuned RBF SVM scores {_mean_std(dp['rbf_tuned']['accuracy'])} on the test set at row level, but this is still a row-level estimate (see M2).
+
+## 4. Model comparison (default settings)
+
+The models below are each `StandardScaler → classifier` in one Pipeline with scikit-learn default settings (SVM = RBF kernel; Logistic Regression: `max_iter` raised so it converges). By {c['n_folds']}-fold row-level CV the best is **{best}** ({_mean_std(cv[best]['accuracy'])}).
+
+### Table 1a — the notebook's split (seed {c['single_split_seed']})
 
 Test set: 39 recordings. Confusion matrix as TN / FP / FN / TP.
 
 {_table(["Model", *metric_header, "TN / FP / FN / TP"], single_rows)}
 
-## Table 1b — {c['n_repeats']} random stratified 80/20 splits (seeds 0–{c['n_repeats'] - 1})
+### Table 1b — {c['n_repeats']} random unstratified 80/20 splits (seeds 0–{c['n_repeats'] - 1})
 
-{_table(["Model", "Accuracy (mean ± std)", "Accuracy 5th–95th pct", "Accuracy min – max", "Bal. acc.", "ROC-AUC", f"Splits ≥ {_pct(c['paper_svm_accuracy'])}"], rep_rows)}
+{_table(["Model", "Accuracy (mean ± std)", "Accuracy 5th–95th pct", "Accuracy min – max", "Bal. acc.", "ROC-AUC", f"Splits ≥ {_pct(rep_test)}"], rep_rows)}
 
-## Table 1c — stratified {c['n_folds']}-fold cross-validation (row-level)
+### Table 1c — stratified {c['n_folds']}-fold cross-validation (row-level)
 
 Mean ± std across folds.
 
