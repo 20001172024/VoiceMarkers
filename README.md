@@ -11,8 +11,7 @@ full-stack app, then re-checks the paper's own numbers more strictly:
 3. A model trained on the UCI Parkinson's dataset returns a probability, explains which
    features drove it (SHAP), and shows where each value sits relative to both training groups.
 
-**Live demo:** _coming soon: deployment runs automatically once the hosting secrets are set
-(see [docs/deployment.md](docs/deployment.md))._
+**Live demo:** <https://voice-markers.vercel.app> · **API:** <https://arora2006-voicemarkers-api.hf.space/docs>
 
 > **Disclaimer.** VoiceMarkers is a research and education demo. It is **not a medical
 > device** and does not diagnose, screen for or rule out Parkinson's disease or any other
