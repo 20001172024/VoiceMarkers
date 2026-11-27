@@ -104,7 +104,18 @@ def test_paper_accuracy_is_34_of_39() -> None:
 def test_main_writes_json_and_markdown(synthetic_csv: Path, tmp_path: Path) -> None:
     out = tmp_path / "results"
     rc = rp.main(
-        ["--data", str(synthetic_csv), "--out-dir", str(out), "--n-repeats", "3", "--n-folds", "3"]
+        [
+            "--data",
+            str(synthetic_csv),
+            "--out-dir",
+            str(out),
+            "--n-repeats",
+            "3",
+            "--n-folds",
+            "3",
+            "--n-tuned-repeats",
+            "2",
+        ]
     )
     assert rc == 0
     results = json.loads((out / "paper_reproduction.json").read_text())
@@ -114,3 +125,43 @@ def test_main_writes_json_and_markdown(synthetic_csv: Path, tmp_path: Path) -> N
     assert "row-level" in report
     for name in MODEL_NAMES:
         assert name in report
+
+
+def test_notebook_split_is_unstratified_with_seed_2_and_reports_train_accuracy(
+    synthetic_csv: Path,
+) -> None:
+    from sklearn.model_selection import train_test_split
+
+    ds = load_dataset(synthetic_csv)
+    _, X_te, _, _ = rp._split(ds, rp.NOTEBOOK_SEED)
+    _, expected, _, _ = train_test_split(ds.X, ds.y, test_size=0.2, random_state=2)
+    assert list(X_te.index) == list(expected.index)  # identical to the notebook's cell 21
+    m = rp.single_split(ds, "SVM", rp.NOTEBOOK_SEED)
+    assert 0.0 <= m["train_accuracy"] <= 1.0
+
+
+def test_notebook_model_is_a_linear_svm_with_default_c() -> None:
+    clf = rp.notebook_svm().named_steps["clf"]
+    assert clf.kernel == "linear" and clf.C == 1.0
+
+
+def test_notebook_reproduction_structure(synthetic_csv: Path) -> None:
+    nb = rp.notebook_reproduction(load_dataset(synthetic_csv), n_repeats=3)
+    assert nb["seed"] == 2
+    assert {"accuracy", "train_accuracy", "tn", "tp"} <= set(nb["exact"])
+    assert nb["over_splits"]["n_splits"] == 3
+    assert isinstance(nb["matches_paper"], bool)
+
+
+def test_described_protocol_compares_default_and_tuned_rbf_svm(synthetic_csv: Path) -> None:
+    dp = rp.described_protocol(load_dataset(synthetic_csv), n_default=3, n_tuned=2)
+    assert dp["rbf_default"]["n_splits"] == 3 and dp["rbf_tuned"]["n_splits"] == 2
+    assert set(dp["grid"]) == {"C", "gamma"}
+
+
+def test_report_has_reproduction_and_described_protocol_sections(synthetic_csv: Path) -> None:
+    results = rp.run(load_dataset(synthetic_csv), n_repeats=2, n_folds=3, n_tuned_repeats=2)
+    md = rp.to_markdown(results)
+    assert "## 1. Exact reproduction of the original notebook" in md
+    assert "## 3. The protocol described in the paper's text" in md
+    assert "88.46%" in md and "87.18%" in md

@@ -4,10 +4,13 @@
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+# The original research notebook is kept exactly as written.
+extend-exclude = "^/research/original/"
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["research/original"]
 
 [tool.ruff.lint]
 # E/F: pycodestyle + pyflakes, I: import sorting, B: bugbear, UP: pyupgrade

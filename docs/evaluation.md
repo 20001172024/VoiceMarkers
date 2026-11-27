@@ -23,9 +23,10 @@ has to be read against that baseline, which is why balanced accuracy is the head
 
 ## 3. Table 1 — paper reproduction (row-level)
 
-The paper reports 87.18% SVM accuracy from one 80/20 row-level split (34 of 39 test recordings).
-Over 200 random 80/20 splits the same SVM setup scores 87.7% ± 4.9%, so the paper's figure is
-typical for that protocol. Full tables: [`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
+The paper reports 87.18% SVM test accuracy from one 80/20 row-level split (34 of 39 test recordings).
+The original notebook (`SVC(kernel='linear')`, default C=1, unstratified split with seed 2) gives 88.46% training and 87.18% test accuracy here, exactly the paper's figures. The paper's text describes a stratified split and an RBF SVM tuned by grid search; run that way it scores 93.2% ± 3.0% on the test set. Over 200 random 80/20 splits the notebook's model scores 86.0% ± 5.0%, so the
+paper's figure is typical for that protocol. The table compares the models with default settings. Full tables:
+[`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
 
 | Model | Accuracy, 200 random 80/20 splits | 5th–95th pct | Bal. acc. | ROC-AUC |
 |---|---|---|---|---|
@@ -121,6 +122,8 @@ The deployed model may only use features that can be computed from a new recordi
 15 of the 22 UCI features (pitch, jitter, shimmer, HNR); the other 7
 (`NHR`, `RPDE`, `DFA`, `spread1`, `spread2`, `D2`, `PPE`) are dropped. See `backend/app/audio/features.py`
 for why, and [`research/results/feature_validation.md`](../research/results/feature_validation.md) for the range checks.
+
+The paper's XGBoost feature importance ranked `spread1`, `PPE`, `RPDE`, `DFA` highest; none of them can be computed from a new recording, which helps explain why models lose accuracy on the reproducible features.
 
 Both columns use the same nested subject-wise CV (Section 4).
 
