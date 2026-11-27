@@ -3,7 +3,7 @@
 | Part | Host | URL |
 |---|---|---|
 | Backend (FastAPI, Docker) | Hugging Face Spaces (free CPU) | `https://arora2006-voicemarkers-api.hf.space` |
-| Frontend (static Vite build) | Vercel (free) | `https://<your-project>.vercel.app` |
+| Frontend (static Vite build) | Vercel (free, project `voice-markers`) | `https://voice-markers.vercel.app` |
 
 Why these hosts: the backend loads scikit-learn, SHAP (with numba) and Praat, about 500 MB
 in memory. The free Hugging Face CPU Space has 16 GB, while free tiers with 512 MB (such
@@ -12,7 +12,7 @@ static files, which any static host serves well.
 
 ## How deploys happen
 
-Everything runs in `.github/workflows/ci.yml`:
+The backend is deployed by `.github/workflows/ci.yml`; the frontend by Vercel's GitHub integration:
 
 1. **On every push and pull request:** Python lint and tests, frontend checks, and a
    **Docker smoke test**. The smoke test builds the production image, starts it, checks
@@ -24,12 +24,11 @@ Everything runs in `.github/workflows/ci.yml`:
      2. uploads the Dockerfile, the `app/` package and the model to the Space in one commit;
      3. waits until `/health` reports the new commit as its `build`. The Space rebuilds its
         image after every upload, which takes several minutes.
-   - **deploy-frontend:**
-     1. builds the site with `VITE_API_BASE_URL` pointing at the Space;
-     2. deploys it to Vercel's production URL with the Vercel CLI.
+3. **Frontend:** Vercel's GitHub integration builds `frontend/` and deploys every push to
+   `main` to production (and every other branch or PR to a preview URL). The API address is
+   the Vercel project variable `VITE_API_BASE_URL`, set to the Space's URL.
 
-If a secret is missing, its deploy job prints a notice and skips without failing, so CI
-stays green before deployment is set up.
+If `HF_TOKEN` is missing, the backend deploy job prints a notice and skips without failing.
 
 ## One-time setup
 
@@ -52,30 +51,29 @@ and sets these variables.
 |---|---|---|
 | `BUILD_SHA` | the git commit | shown by `/health`, so the deploy job can tell the new build is live |
 | `FORWARDED_HOPS` | `1` | the rate limiter takes the client IP from the entry the Space's proxy appends to `X-Forwarded-For` |
-| `CORS_ORIGINS` | from the `FRONTEND_URL` repository variable | the only website allowed to call the API from a browser |
+| `CORS_ORIGINS` | `FRONTEND_URL` (default `https://voice-markers.vercel.app`) | the only website allowed to call the API from a browser |
 
 ### 2. Vercel (frontend)
 
-1. Install the CLI with `npm i -g vercel` and log in with `vercel login`. Then, inside
-   `frontend/`, run `vercel link` and create a new project. That writes
-   `frontend/.vercel/project.json`; don't commit it.
-   - Keep the project's **Root Directory** empty. The workflow deploys from inside
-     `frontend/`.
-   - **Don't connect the Git repository** in Vercel. GitHub Actions does the deploys,
-     and connecting Git would also make Vercel deploy every push itself, so each push
-     would be deployed twice.
-2. Create a token at <https://vercel.com/account/tokens>.
-3. Add three repository secrets:
-   - `VERCEL_TOKEN`: the token;
-   - `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`: the `orgId` and `projectId` from
-     `frontend/.vercel/project.json`.
-4. Add a repository **variable** (not a secret), `FRONTEND_URL`, set to the production
-   URL, for example `https://voicemarkers.vercel.app`. The next backend deploy allows
-   that origin through CORS.
+The Vercel project `voice-markers` is connected to this GitHub repository:
+
+- **Root Directory** `frontend`, framework **Vite**. Build settings come from
+  `frontend/vercel.json`, which also sets the security headers.
+- **Environment variable** `VITE_API_BASE_URL` = `https://arora2006-voicemarkers-api.hf.space`
+  for Production, Preview and Development. Vite bakes it into the JavaScript bundle at
+  build time, so after changing it, redeploy.
+- **Production URL:** `https://voice-markers.vercel.app`. The backend's `CORS_ORIGINS` is set
+  to this origin by the deploy job, from the `FRONTEND_URL` value in `ci.yml`. To use a
+  different domain, set a repository variable `FRONTEND_URL`.
+- Preview deployments are protected by Vercel Authentication (the project default).
+  The production domain is public.
+
+No Vercel token or GitHub secrets are needed.
 
 Optional repository variables, if the targets change: `HF_SPACE`
-(default `arora2006/voicemarkers-api`) and `API_BASE_URL`
-(default `https://arora2006-voicemarkers-api.hf.space`).
+(default `arora2006/voicemarkers-api`), `API_BASE_URL`
+(default `https://arora2006-voicemarkers-api.hf.space`) and `FRONTEND_URL`
+(default `https://voice-markers.vercel.app`).
 
 ### 3. First deploy
 
