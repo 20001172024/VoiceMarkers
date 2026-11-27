@@ -24,3 +24,11 @@ describe("AboutPage", () => {
     }
   });
 });
+
+describe("AboutPage citation", () => {
+  it("names the paper and its authors", () => {
+    render(<AboutPage />);
+    expect(screen.getByText(/Voice-Based Detection of Parkinson's Disease/)).toBeInTheDocument();
+    expect(screen.getByText(/S\. Arora, S\. Jha, V\. Tyagi and Y\. Bhushan/)).toBeInTheDocument();
+  });
+});

@@ -1,6 +1,6 @@
 import summary from "../generated/evaluation_summary.json";
 import { Disclaimer } from "../components/Disclaimer";
-import { EVALUATION_URL, PAPER_URL } from "../constants";
+import { EVALUATION_URL, PAPER_AUTHORS, PAPER_TITLE, PAPER_URL, PAPER_VENUE } from "../constants";
 import { meanStd, pct } from "../format";
 
 // Every number on this page comes from evaluation_summary.json, which
@@ -35,20 +35,19 @@ export function AboutPage() {
       <header className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">About the model</h1>
         <p className="max-w-prose text-ink-2">
-          The paper (ICOIICS 2025)
-          {PAPER_URL && (
-            <>
-              {" "}
-              (
+          The paper{" "}
+          <cite>
+            {PAPER_URL ? (
               <a className="text-accent underline" href={PAPER_URL}>
-                read it
+                {PAPER_TITLE}
               </a>
-              )
-            </>
-          )}{" "}
-          reported {pct(paper.reported_svm_accuracy, 2)} accuracy for an SVM on the UCI
-          Parkinson&apos;s voice dataset. This page shows what happens when the same models are
-          evaluated more strictly.
+            ) : (
+              PAPER_TITLE
+            )}
+          </cite>{" "}
+          ({PAPER_AUTHORS}, {PAPER_VENUE}) reported {pct(paper.reported_svm_accuracy, 2)} accuracy
+          for an SVM on the UCI Parkinson&apos;s voice dataset. This page shows what happens when
+          the same models are evaluated more strictly.
         </p>
       </header>
 
