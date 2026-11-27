@@ -23,18 +23,19 @@ has to be read against that baseline, which is why balanced accuracy is the head
 
 ## 3. Table 1 — paper reproduction (row-level)
 
-The paper reports 87.18% SVM accuracy from one 80/20 row-level split (34 of 39 test recordings).
-Over 200 random 80/20 splits the same SVM setup scores 87.7% ± 4.9%, so the paper's figure is
-typical for that protocol. Full tables: [`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
+The paper reports 87.18% SVM test accuracy from one stratified 80/20 row-level split (34 of 39 test
+recordings). Over 200 random stratified 80/20 splits an SVM with default settings scores 87.9% ± 3.6%,
+so the paper's figure is typical for that protocol. The paper also reports 88.46% training accuracy; the default SVM averages 89.9% ± 1.1%, while the grid search the paper describes gives 99.8% ± 0.6% training and 93.2% ± 3.0% test accuracy, so the reported figures match an untuned SVM. Full tables:
+[`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
 
-| Model | Accuracy, 200 random 80/20 splits | 5th–95th pct | Bal. acc. | ROC-AUC |
+| Model | Accuracy, 200 stratified 80/20 splits | 5th–95th pct | Bal. acc. | ROC-AUC |
 |---|---|---|---|---|
-| Majority baseline | 75.1% ± 5.8% | 66.7% – 84.6% | 50.0% ± 0.0% | 50.0% ± 0.0% |
-| SVM | 87.7% ± 4.9% | 79.5% – 94.9% | 75.8% ± 8.2% | 88.2% ± 7.0% |
-| Random Forest | 90.5% ± 4.2% | 84.6% – 97.4% | 84.5% ± 7.5% | 95.9% ± 3.3% |
-| Logistic Regression | 85.2% ± 4.9% | 76.9% – 92.3% | 77.7% ± 7.8% | 89.7% ± 4.9% |
-| KNN | 90.4% ± 4.9% | 82.1% – 97.4% | 86.5% ± 7.6% | 96.3% ± 3.2% |
-| Gradient Boosting | 91.1% ± 4.1% | 84.6% – 97.4% | 86.6% ± 6.9% | 95.7% ± 3.7% |
+| Majority baseline | 74.4% ± 0.0% | 74.4% – 74.4% | 50.0% ± 0.0% | 50.0% ± 0.0% |
+| SVM | 87.9% ± 3.6% | 82.1% – 92.3% | 76.7% ± 6.9% | 89.0% ± 6.9% |
+| Random Forest | 90.9% ± 4.0% | 84.6% – 97.4% | 85.5% ± 6.7% | 96.4% ± 2.7% |
+| Logistic Regression | 85.6% ± 4.4% | 79.5% – 92.3% | 78.5% ± 6.8% | 90.4% ± 4.5% |
+| KNN | 90.9% ± 4.3% | 84.6% – 97.4% | 87.3% ± 6.4% | 96.6% ± 2.6% |
+| Gradient Boosting | 91.5% ± 3.7% | 87.2% – 97.4% | 87.1% ± 5.9% | 96.5% ± 3.3% |
 
 ## 4. Table 2 — subject-wise evaluation
 
@@ -121,6 +122,8 @@ The deployed model may only use features that can be computed from a new recordi
 15 of the 22 UCI features (pitch, jitter, shimmer, HNR); the other 7
 (`NHR`, `RPDE`, `DFA`, `spread1`, `spread2`, `D2`, `PPE`) are dropped. See `backend/app/audio/features.py`
 for why, and [`research/results/feature_validation.md`](../research/results/feature_validation.md) for the range checks.
+
+The paper's XGBoost feature importance ranked `spread1`, `PPE`, `RPDE`, `DFA` highest; none of them can be computed from a new recording, which helps explain why models lose accuracy on the reproducible features.
 
 Both columns use the same nested subject-wise CV (Section 4).
 
