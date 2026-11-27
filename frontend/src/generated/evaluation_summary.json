@@ -11,8 +11,8 @@
   "paper": {
     "reported_svm_accuracy": 0.8717948717948718,
     "svm_accuracy_200_splits": {
-      "mean": 0.8785897435897436,
-      "std": 0.035849555981027424
+      "mean": 0.8602564102564103,
+      "std": 0.050164096273112455
     }
   },
   "baseline_accuracy": {

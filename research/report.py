@@ -241,19 +241,20 @@ def build_report(
     # --- Table 1: paper reproduction (from M1 output)
     pr = paper["repeated_splits"]
     pr_n = paper["config"]["n_repeats"]
-    pp = paper.get("paper_protocol")
+    nb = paper["notebook"]
+    dp = paper["described_protocol"]
     pp_sentence = (
-        f"The paper also reports {pp['reported']['train_accuracy']:.2%} training accuracy; "
-        f"the default SVM averages {mean_std(pp['default']['train_accuracy'])}, while the grid search "
-        f"the paper describes gives {mean_std(pp['tuned']['train_accuracy'])} training and "
-        f"{mean_std(pp['tuned']['accuracy'])} test accuracy, so the reported figures match an untuned SVM."
-        if pp
-        else ""
+        f"The original notebook (`SVC(kernel='linear')`, default C=1, unstratified split with seed "
+        f"{nb['seed']}) gives {nb['exact']['train_accuracy']:.2%} training and "
+        f"{nb['exact']['accuracy']:.2%} test accuracy here"
+        + (", exactly the paper's figures." if nb["matches_paper"] else ".")
+        + " The paper's text describes a stratified split and an RBF SVM tuned by grid search; "
+        f"run that way it scores {mean_std(dp['rbf_tuned']['accuracy'])} on the test set."
     )
     t1 = table(
         [
             "Model",
-            f"Accuracy, {pr_n} stratified 80/20 splits",
+            f"Accuracy, {pr_n} random 80/20 splits",
             "5th–95th pct",
             "Bal. acc.",
             "ROC-AUC",
@@ -372,7 +373,7 @@ def build_report(
     below_baseline = [
         m for m in models if s(m, "subject_tuned", "accuracy")["mean"] < base_acc["mean"]
     ]
-    paper_svm = paper["repeated_splits"]["SVM"]["accuracy"]
+    paper_svm = paper["notebook"]["over_splits"]["accuracy"]
     top_feature, top_imp = next(iter(ev["feature_importance"].items()))
 
     weighted = [
@@ -432,9 +433,9 @@ has to be read against that baseline, which is why balanced accuracy is the head
 
 ## 3. Table 1 — paper reproduction (row-level)
 
-The paper reports 87.18% SVM test accuracy from one stratified 80/20 row-level split (34 of 39 test
-recordings). Over {pr_n} random stratified 80/20 splits an SVM with default settings scores {mean_std(paper_svm)},
-so the paper's figure is typical for that protocol. {pp_sentence} Full tables:
+The paper reports 87.18% SVM test accuracy from one 80/20 row-level split (34 of 39 test recordings).
+{pp_sentence} Over {pr_n} random 80/20 splits the notebook's model scores {mean_std(paper_svm)}, so the
+paper's figure is typical for that protocol. The table compares the models with default settings. Full tables:
 [`research/results/paper_reproduction.md`](../research/results/paper_reproduction.md).
 
 {t1}
@@ -565,7 +566,7 @@ def summary_for_frontend(
         },
         "paper": {
             "reported_svm_accuracy": paper["config"]["paper_svm_accuracy"],
-            "svm_accuracy_200_splits": ms(paper["repeated_splits"]["SVM"]["accuracy"]),
+            "svm_accuracy_200_splits": ms(paper["notebook"]["over_splits"]["accuracy"]),
         },
         "baseline_accuracy": ms(ev["cv"][BASELINE]["subject_tuned"]["summary"]["accuracy"]),
         "n_outer_folds": ev["config"]["n_splits"] * ev["config"]["n_repeats"],
@@ -613,14 +614,14 @@ def readme_table(paper: dict[str, Any], ev: dict[str, Any], meta: dict[str, Any]
     base = ev["cv"][BASELINE]["subject_tuned"]["summary"]
     rows = [
         [
-            "Paper: SVM, one stratified 80/20 split (row-level)",
+            "Paper: linear SVM, one 80/20 split (row-level), reproduced exactly",
             f"{paper['config']['paper_svm_accuracy']:.2%}",
             "not reported",
         ],
         [
-            f"SVM, same setup over {paper['config']['n_repeats']} stratified splits (row-level)",
-            mean_std(paper["repeated_splits"]["SVM"]["accuracy"]),
-            mean_std(paper["repeated_splits"]["SVM"]["balanced_accuracy"]),
+            f"Same linear SVM over {paper['config']['n_repeats']} random splits (row-level)",
+            mean_std(paper["notebook"]["over_splits"]["accuracy"]),
+            mean_std(paper["notebook"]["over_splits"]["balanced_accuracy"]),
         ],
         [
             "SVM, subject-wise nested CV, all 22 features",
