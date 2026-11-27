@@ -12,6 +12,11 @@ export const PRIVACY_NOTICE =
 
 export const REPO_URL = "https://github.com/20001172024/VoiceMarkers";
 export const EVALUATION_URL = `${REPO_URL}/blob/main/docs/evaluation.md`;
-/** Link to the ICOIICS 2025 paper; leave empty until a public URL is available. */
+/** The paper this app is built on. */
+export const PAPER_TITLE =
+  "Voice-Based Detection of Parkinson's Disease Using Machine Learning Techniques";
+export const PAPER_AUTHORS = "S. Arora, S. Jha, V. Tyagi and Y. Bhushan";
+export const PAPER_VENUE = "ICOIICS 2025";
+/** Public link to the paper; leave empty until one is available. */
 export const PAPER_URL = "";
 export const MAX_UPLOAD_BYTES = 5_000_000;

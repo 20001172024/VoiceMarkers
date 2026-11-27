@@ -159,8 +159,9 @@ recordings. Details: **[docs/limitations.md](docs/limitations.md)**.
 
 ## Citation
 
-**Paper:** Arora, S. *Voice-based Parkinson's disease detection using machine learning.*
-ICOIICS 2025. _(Full citation and link to be added.)_
+**Paper:** S. Arora, S. Jha, V. Tyagi and Y. Bhushan, "Voice-Based Detection of Parkinson's
+Disease Using Machine Learning Techniques," *ICOIICS 2025*. Indira Gandhi Delhi Technical
+University for Women.
 
 **Dataset:** UCI Parkinson's dataset, licensed
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); fetched by `data/download.py`,
